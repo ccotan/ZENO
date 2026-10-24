@@ -1,0 +1,7 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Stage 1: no uploads. Enable only with ownership, MIME, size and ban checks.
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

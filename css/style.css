@@ -278,3 +278,8 @@ body *,body *::before,body *::after{-webkit-user-select:none!important;user-sele
 /* Auth only: palette and existing V17 layout are unchanged. */
 #auth-dialog{width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px}
 #auth-dialog header{display:flex;align-items:center;justify-content:space-between;gap:16px}#auth-dialog h2{margin:0;font-size:22px}#auth-dialog p{line-height:1.5;overflow-wrap:anywhere}#auth-dialog .primary{min-height:44px;max-width:100%;white-space:normal}#auth-dialog [hidden]{display:none!important}#auth-dialog #auth-status:empty{display:none}
+
+/* Shared catalog: keep the original V17 palette. */
+.cloud-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0}.cloud-controls p{flex:1 1 260px;margin:0;font-size:14px;color:var(--muted,#b7a7af)}#cloud-profile-form{margin:20px 0;display:grid;gap:16px}#cloud-profile-form[hidden]{display:none}#cloud-profile-form label{display:grid;gap:8px}#cloud-profile-form input{width:100%;min-width:0;box-sizing:border-box}#cloud-profile-form p,#profile-status{overflow-wrap:anywhere;font-size:14px}#auth-dialog{max-height:90dvh;overflow-y:auto}#lot-photo:disabled{cursor:not-allowed}
+
+#cloud-profile-form input{min-height:44px;padding:10px 12px;background:#120e10;color:#f2e9ed;border:1px solid #996e7d;border-radius:6px;font-size:16px}#cloud-profile-form input:focus-visible{outline:2px solid #e9abc6;outline-offset:2px}#catalog{scroll-margin-top:100px}.cloud-controls{background:#1b1216;border:1px solid #634050;border-radius:8px;padding:12px;margin:12px 0}.cloud-controls .text-button{min-height:44px}

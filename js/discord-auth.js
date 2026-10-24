@@ -14,8 +14,9 @@ async function sdk() {
   const instance=auth.getAuth(firebaseApp);
   await auth.setPersistence(instance,auth.browserLocalPersistence);
   await instance.authStateReady();
-  auth.onAuthStateChanged(instance,value=>{user=value;refreshDiscordAuth()});
-  client={instance,auth};return client;
+  client={instance,auth,firebaseApp};
+  auth.onAuthStateChanged(instance,value=>{user=value;refreshDiscordAuth();window.dispatchEvent(new Event('zeno-auth-change'))});
+  return client;
  })().catch(error=>{sdkPromise=null;throw error});
  return sdkPromise;
 }
@@ -23,7 +24,7 @@ export function refreshDiscordAuth() {
  if(!initialized)return;
  $('#auth-status').textContent=text(...statusText);
  $('#auth-title').textContent=user?text('Аккаунт Discord','Discord account'):text('Вход через Discord','Sign in with Discord');
- $('#auth-note').textContent=user?`${user.displayName||'Discord'} — ${text('вход выполнен. Объявления и чат пока остаются локальным демо.','signed in. Listings and chat are still a local demo.')}`:text('Discord используется только для входа. Google и бот не нужны. Объявления и чат пока локальные.','Discord is used only for sign-in. No Google or bot required. Listings and chat are still local.');
+ $('#auth-note').textContent=user?`${user.displayName||'Discord'} — ${text('вход выполнен. Публичный профиль можно сохранить ниже.','signed in. Save your public profile below.')}`:text('Discord используется только для входа. Google и бот не нужны. Объявления подключаются к общей базе; чат пока локальный.','Discord is used only for sign-in. No Google or bot required. Listings use a shared database; chat is still local.');
  $('#auth-close').ariaLabel=text('Закрыть','Close');
  $('#auth-login').textContent=busy?text('Ожидаем Discord…','Waiting for Discord…'):text('Войти через Discord','Sign in with Discord');
  $('#auth-login').hidden=!!user;$('#auth-login').disabled=busy;
@@ -79,3 +80,6 @@ export function initDiscordAuth() {
  // No external Firebase requests until the backend is configured.
  if(origin())sdk().catch(()=>{status('Не удалось восстановить вход. Проверь соединение.','Could not restore sign-in. Check the connection.')});
 }
+
+// Reuse the same Firebase app and Auth instance for Firestore.
+export async function getFirebaseSession(){return sdk()}
