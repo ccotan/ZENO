@@ -23,18 +23,18 @@ async function sdk() {
 export function refreshDiscordAuth() {
  if(!initialized)return;
  $('#auth-status').textContent=text(...statusText);
- $('#auth-title').textContent=user?text('Аккаунт Discord','Discord account'):text('Вход через Discord','Sign in with Discord');
- $('#auth-note').textContent=user?`${user.displayName||'Discord'} — ${text('вход выполнен. Публичный профиль можно сохранить ниже.','signed in. Save your public profile below.')}`:text('Discord используется только для входа. Google и бот не нужны. Объявления подключаются к общей базе; чат пока локальный.','Discord is used only for sign-in. No Google or bot required. Listings use a shared database; chat is still local.');
+ $('#auth-title').textContent=user?text('Профиль','Profile'):text('Вход','Sign in');
+ $('#auth-note').textContent=user?'':text('Используй Discord, чтобы публиковать объявления и общаться с игроками.','Use Discord to publish listings and talk to players.');
  $('#auth-close').ariaLabel=text('Закрыть','Close');
- $('#auth-login').textContent=busy?text('Ожидаем Discord…','Waiting for Discord…'):text('Войти через Discord','Sign in with Discord');
+ $('#auth-login').replaceChildren();const logo=document.createElementNS('http://www.w3.org/2000/svg','svg'),use=document.createElementNS(logo.namespaceURI,'use');use.setAttribute('href','./assets/icons.svg#icon-discord');logo.append(use);const caption=document.createElement('span');caption.textContent=busy?text('Ожидаем Discord…','Waiting for Discord…'):text('Войти через Discord','Sign in with Discord');$('#auth-login').append(logo,caption);
  $('#auth-login').hidden=!!user;$('#auth-login').disabled=busy;
- $('#auth-logout').textContent=text('Выйти','Sign out');$('#auth-logout').hidden=!user;
+ $('#auth-logout').querySelector('span').textContent=text('Выйти','Sign out');$('#auth-logout').hidden=!user;
  const label=$('[data-action="login"] span');label.textContent=user?text('Аккаунт','Account'):text('Войти','Sign in');
 }
 async function login() {
  if(busy)return;
  const authOrigin=origin();
- if(!authOrigin){status('Обработчик ещё не подключён. Сначала размести Cloudflare Worker и укажи его адрес в config.js.','The auth server is not connected yet. Deploy the Worker and set its origin in config.js.');return}
+ if(!authOrigin){status('Вход временно недоступен. Попробуй позже.','Sign-in is temporarily unavailable. Try again later.');return}
  const requestId=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');
  // Open synchronously on the user click, before loading the Firebase SDK.
  const popup=window.open('about:blank','zeno-discord-login','popup,width=520,height=760');
@@ -58,8 +58,8 @@ async function login() {
    if(typeof data.profile?.displayName==='string')try{await auth.updateProfile(result.user,{displayName:data.profile.displayName.slice(0,80)})}catch{/* sign-in still succeeded */}
    user=result.user;status('Вход выполнен.','Signed in.');
   }catch(error){
-   const code=typeof error?.code==='string'&&/^auth\/[a-z0-9-]{1,80}$/.test(error.code)?error.code:'firebase-unknown';
-   status('Firebase не завершил вход. Код: '+code,'Firebase sign-in failed. Code: '+code);
+   const code=typeof error?.code==='string'&&/^auth\/[a-z0-9-]{1,80}$/.test(error.code)?error.code:'sign-in-failed';
+   status('Не удалось завершить вход. Повтори попытку.','Could not complete sign-in. Try again.');
   }
   finally{busy=false;refreshDiscordAuth()}
  }

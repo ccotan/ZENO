@@ -1,0 +1,1 @@
+{"indexes":[],"fieldOverrides":[{"collectionGroup":"lotPhotos","fieldPath":"data","indexes":[]},{"collectionGroup":"lots","fieldPath":"traitData","indexes":[]},{"collectionGroup":"messages","fieldPath":"body","indexes":[]}]}
