@@ -44,7 +44,10 @@ async function login() {
  async function receive(event) {
   if(event.origin!==authOrigin||event.source!==popup||event.data?.type!=='zeno-discord-auth'||event.data.requestId!==requestId)return;
   const data=event.data;clean();popup.close();
-  if(data.error){status('Discord-вход отменён или не выполнен. Попробуй снова.','Discord sign-in was cancelled or failed. Try again.');return}
+  if(data.error){
+   const code=typeof data.error==='string'&&/^[a-z0-9-]{1,100}$/.test(data.error)?data.error:'unknown';
+   status('Вход не выполнен. Код: '+code,'Sign-in failed. Code: '+code);return;
+  }
   if(typeof data.customToken!=='string'||data.customToken.length>12000){status('Некорректный ответ входа.','Invalid authentication response.');return}
   busy=true;refreshDiscordAuth();
   try {
@@ -53,7 +56,10 @@ async function login() {
    // Cosmetic profile name only. Never use the display name for authorization or seller ownership.
    if(typeof data.profile?.displayName==='string')try{await auth.updateProfile(result.user,{displayName:data.profile.displayName.slice(0,80)})}catch{/* sign-in still succeeded */}
    user=result.user;status('Вход выполнен.','Signed in.');
-  }catch{status('Firebase не завершил вход. Проверь настройки проекта и попробуй снова.','Firebase sign-in failed. Check the project configuration and retry.')}
+  }catch(error){
+   const code=typeof error?.code==='string'&&/^auth\/[a-z0-9-]{1,80}$/.test(error.code)?error.code:'firebase-unknown';
+   status('Firebase не завершил вход. Код: '+code,'Firebase sign-in failed. Code: '+code);
+  }
   finally{busy=false;refreshDiscordAuth()}
  }
  window.addEventListener('message',receive);
