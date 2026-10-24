@@ -52,7 +52,9 @@ service cloud.firestore {
   function auditLot(d,id){let before=get(/databases/$(database)/documents/lots/$(d.targetId)).data;let after=getAfter(/databases/$(database)/documents/lots/$(d.targetId)).data;return staff() && before.id==d.targetGeneration && after.id==before.id && after.lastAuditId==id && after.moderationReason==d.reason && visibility(before)==d.from && after.visibility==d.to && ((d.action=='lot-hide' && d.to=='hidden') || (d.action=='lot-show' && d.to=='active'));}
   function auditDelete(d,id){return manager() && id=='delete_'+d.targetId+'_'+d.targetGeneration && get(/databases/$(database)/documents/lots/$(d.targetId)).data.id==d.targetGeneration && !existsAfter(/databases/$(database)/documents/lots/$(d.targetId)) && d.to=='deleted' && d.from==visibility(get(/databases/$(database)/documents/lots/$(d.targetId)).data);}
   function auditReport(d,id){let before=get(/databases/$(database)/documents/reports/$(d.targetId)).data;let after=getAfter(/databases/$(database)/documents/reports/$(d.targetId)).data;return staff() && after.lastAuditId==id && before.status==d.from && after.status==d.to && after.resolution==d.reason && after.handledBy==request.auth.uid && d.targetGeneration=='';}
-  function auditCreate(d,id){return staff() && d.keys().hasAll(['actorUid','action','targetKind','targetId','targetGeneration','reason','from','to','createdAt']) && d.keys().hasOnly(['actorUid','action','targetKind','targetId','targetGeneration','reason','from','to','createdAt']) && d.actorUid==request.auth.uid && d.createdAt==request.time && reasonOK(d.reason) && d.targetId is string && d.targetId.size()<=220 && d.from is string && d.from.size()<=30 && d.to is string && d.to.size()<=30 && (
+  function auditCreate(d,id){return staff() && d.keys().hasAll(['actorUid','action','targetKind','targetId','targetGeneration','reason','from','to','createdAt']) && d.keys().hasOnly(['actorUid','action','targetKind','targetId','targetGeneration','reason','from','to','createdAt']) && d.actorUid==request.auth.uid && d.createdAt==request.time && reasonOK(d.reason) && d.targetId is string && d.targetId.size()<=220 && d.from is string && d.from.size()<=30 && d.to is string && d.to.size()<=80 && (
+   (d.targetKind=='promo' && d.action in ['promo-save','promo-delete'] && auditPromo(d,id)) ||
+   (d.targetKind=='review' && d.action in ['review-hide','review-show'] && auditReview(d,id)) ||
    (d.action=='role-set' && d.targetKind=='user' && uuid(id) && auditRole(d,id)) ||
    (d.action in ['user-block','user-unblock'] && d.targetKind=='user' && uuid(id) && auditBlock(d,id)) ||
    (d.action in ['lot-hide','lot-show'] && d.targetKind=='lot' && uuid(id) && auditLot(d,id)) ||
@@ -60,6 +62,36 @@ service cloud.firestore {
    (d.action=='report-update' && d.targetKind=='report' && uuid(id) && auditReport(d,id)));
   }
   match /auditLog/{id}{allow get:if staff();allow list:if staff() && bounded(50);allow create:if auditCreate(request.resource.data,id);allow update,delete:if false;}
+
+
+  function reviewOK(d,seller,id){let deal=get(/databases/$(database)/documents/deals/$(id)).data;return active() && uuid(id) && d.keys().hasAll(['dealId','authorId','sellerId','rating','text','hidden','createdAt','updatedAt']) && d.keys().hasOnly(['dealId','authorId','sellerId','rating','text','hidden','createdAt','updatedAt']) && d.dealId==id && d.authorId==deal.buyerId && owner(d.authorId) && d.sellerId==seller && deal.sellerId==seller && d.authorId!=seller && deal.status=='completed' && deal.buyerConfirmed && deal.sellerConfirmed && d.rating is int && d.rating>=1 && d.rating<=5 && d.text is string && d.text.size()>=10 && d.text.size()<=1000 && d.hidden==false && d.createdAt==request.time && d.updatedAt==request.time;}
+  match /publicProfiles/{seller}/reviews/{id}{
+   allow get:if !exists(/databases/$(database)/documents/publicProfiles/$(seller)/reviews/$(id)) || resource.data.hidden==false || staff() || owner(resource.data.authorId) || owner(seller);
+   allow list:if bounded(50) && (resource.data.hidden==false || staff());
+   allow create:if reviewOK(request.resource.data,seller,id);
+   allow update:if
+    (active() && owner(seller) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['response','responseAt']) && request.resource.data.response is string && request.resource.data.response.size()>=1 && request.resource.data.response.size()<=600 && request.resource.data.responseAt==request.time) ||
+    (staff() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden','moderationReason','moderatedAt','lastAuditId']) && request.resource.data.hidden is bool && request.resource.data.hidden!=resource.data.hidden && reasonOK(request.resource.data.moderationReason) && request.resource.data.moderatedAt==request.time && uuid(request.resource.data.lastAuditId) && auditMatches(request.resource.data.lastAuditId,request.resource.data.hidden?'review-hide':'review-show','review',seller+'_'+id,'',request.resource.data.moderationReason));
+   allow delete:if false;
+  }
+  function promoOK(d,id){return id.matches('[0-9]') && d.keys().hasAll(['title','subtitle','buttonText','href','enabled','startsAt','endsAt','hasImage','imageVersion','createdAt','updatedAt','lastAuditId']) && d.keys().hasOnly(['title','subtitle','buttonText','href','enabled','startsAt','endsAt','hasImage','imageVersion','createdAt','updatedAt','lastAuditId']) && d.title is string && d.title.size()>=3 && d.title.size()<=70 && d.subtitle is string && d.subtitle.size()<=180 && d.buttonText is string && d.buttonText.size()<=24 && d.href is string && d.href.size()<=500 && (d.href=='' || d.href.matches('https://[^\\s]+')) && d.enabled is bool && d.startsAt is timestamp && d.endsAt is timestamp && d.endsAt>d.startsAt && d.hasImage is bool && d.imageVersion is string && ((d.hasImage && uuid(d.imageVersion) && getAfter(/databases/$(database)/documents/promoImages/$(id)).data.version==d.imageVersion) || (!d.hasImage && d.imageVersion=='' && !existsAfter(/databases/$(database)/documents/promoImages/$(id)))) && d.createdAt is timestamp && d.updatedAt==request.time && uuid(d.lastAuditId) && auditMatches(d.lastAuditId,'promo-save','promo',id,'',getAfter(/databases/$(database)/documents/auditLog/$(d.lastAuditId)).data.reason);}
+  match /promos/{id}{
+   allow get:if manager() || resource.data.enabled==true;
+   allow list:if bounded(10) && (manager() || resource.data.enabled==true);
+   allow create:if manager() && promoOK(request.resource.data,id) && request.resource.data.createdAt==request.time;
+   allow update:if manager() && promoOK(request.resource.data,id) && request.resource.data.createdAt==resource.data.createdAt;
+   allow delete:if manager() && !existsAfter(/databases/$(database)/documents/promoImages/$(id)) && auditMatches('promo_delete_'+id+'_'+resource.data.lastAuditId,'promo-delete','promo',id,'',getAfter(/databases/$(database)/documents/auditLog/$('promo_delete_'+id+'_'+resource.data.lastAuditId)).data.reason);
+  }
+  match /promoImages/{id}{
+   allow get:if manager() || get(/databases/$(database)/documents/promos/$(id)).data.enabled==true;
+   allow list:if false;
+   allow create,update:if manager() && request.resource.data.keys().hasAll(['version','data','updatedAt']) && request.resource.data.keys().hasOnly(['version','data','updatedAt']) && uuid(request.resource.data.version) && request.resource.data.data is string && request.resource.data.data.size()<=245760 && request.resource.data.data.matches('data:image/webp;base64,[A-Za-z0-9+/=]+') && request.resource.data.updatedAt==request.time && getAfter(/databases/$(database)/documents/promos/$(id)).data.hasImage && getAfter(/databases/$(database)/documents/promos/$(id)).data.imageVersion==request.resource.data.version;
+   allow delete:if manager() && (!existsAfter(/databases/$(database)/documents/promos/$(id)) || getAfter(/databases/$(database)/documents/promos/$(id)).data.hasImage==false);
+  }
+  match /users/{uid}/preferences/{id}{allow get:if signed() && request.auth.uid==uid;allow list,delete:if false;allow create,update:if signed() && request.auth.uid==uid && id=='ui' && request.resource.data.keys().hasOnly(['soundEnabled','updatedAt']) && request.resource.data.soundEnabled is bool && request.resource.data.updatedAt==request.time;}
+  function auditPromo(d,id){return manager() && d.targetGeneration=='' && d.targetId.matches('[0-9]') && ((d.action=='promo-save' && uuid(id) && getAfter(/databases/$(database)/documents/promos/$(d.targetId)).data.lastAuditId==id && d.to==(getAfter(/databases/$(database)/documents/promos/$(d.targetId)).data.enabled?'enabled':'disabled')) || (d.action=='promo-delete' && exists(/databases/$(database)/documents/promos/$(d.targetId)) && id=='promo_delete_'+d.targetId+'_'+get(/databases/$(database)/documents/promos/$(d.targetId)).data.lastAuditId && !existsAfter(/databases/$(database)/documents/promos/$(d.targetId)) && d.to=='deleted'));}
+  function auditReview(d,id){let after=getAfter(/databases/$(database)/documents/publicProfiles/$(d.from)/reviews/$(d.to)).data;return staff() && uuid(id) && d.targetId==d.from+'_'+d.to && d.targetGeneration=='' && after.lastAuditId==id && after.moderationReason==d.reason && ((d.action=='review-hide' && after.hidden==true)||(d.action=='review-show' && after.hidden==false));}
+  function threadDeal(d){let deal=get(/databases/$(database)/documents/deals/$(d.get('dealId',''))).data;return uuid(d.get('dealId','')) && member(deal) && d.sellerId==deal.sellerId && d.buyerId==deal.buyerId && d.lotDoc==deal.lotDoc && d.lotGenerationId==deal.lotGenerationId && d.itemKey==deal.itemKey && d.title==deal.title;}
 
   function who(){return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.publicId;}
   function owner(id){return signed() && who()==id;}
@@ -127,7 +159,7 @@ service cloud.firestore {
   }
   match /lots/{id} {
    allow get:if true;
-   allow list:if bounded(100);
+   allow list:if bounded(500);
    allow create:if lotCreate(request.resource.data,id);
    allow update:if lotStockUpdate(request.resource.data,id) || lotModerate(request.resource.data,id);
    allow delete:if (owner(resource.data.sellerId) && res(resource.data)==0 && !existsAfter(/databases/$(database)/documents/lotPhotos/$(id))) || staffDeleteLot(id);
@@ -139,8 +171,8 @@ service cloud.firestore {
    allow delete:if (owner(resource.data.sellerId) || manager()) && !existsAfter(/databases/$(database)/documents/lots/$(id));
   }
   function threadCreate(d,id){
-   let l=get(/databases/$(database)/documents/lots/$(d.lotDoc)).data;
-   return d.keys().hasAll(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','createdAt','updatedAt','lastMessageId','lastSenderId']) && d.keys().hasOnly(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','createdAt','updatedAt','lastMessageId','lastSenderId']) && active() && visibility(l)=='active' && owner(d.buyerId) && d.sellerId!=d.buyerId && d.sellerId==l.sellerId && d.members==[d.sellerId,d.buyerId] && d.lotGenerationId==l.id && d.itemKey==l.itemKey && d.title==l.customName && id==d.lotDoc+'~'+d.lotGenerationId+'~'+d.buyerId && d.createdAt==request.time && d.updatedAt==request.time && d.lastMessageId=='' && d.lastSenderId=='';
+   let l=exists(/databases/$(database)/documents/lots/$(d.lotDoc))?get(/databases/$(database)/documents/lots/$(d.lotDoc)).data:{};
+   return d.keys().hasAll(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','createdAt','updatedAt','lastMessageId','lastSenderId']) && d.keys().hasOnly(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','createdAt','updatedAt','lastMessageId','lastSenderId','dealId']) && active() && d.sellerId!=d.buyerId && ((visibility(l)=='active' && owner(d.buyerId) && d.sellerId==l.sellerId && d.lotGenerationId==l.id && d.itemKey==l.itemKey && d.title==l.customName) || threadDeal(d)) && d.members==[d.sellerId,d.buyerId] && id==d.lotDoc+'~'+d.lotGenerationId+'~'+d.buyerId && d.createdAt==request.time && d.updatedAt==request.time && d.lastMessageId=='' && d.lastSenderId=='';
   }
   function threadUpdate(d,id){let msg=getAfter(/databases/$(database)/documents/threads/$(id)/messages/$(d.lastMessageId)).data;return active() && member(resource.data) && d.diff(resource.data).affectedKeys().hasOnly(['lastMessageId','lastSenderId','updatedAt']) && uuid(d.lastMessageId) && owner(d.lastSenderId) && d.updatedAt==request.time && msg.createdAt==request.time && msg.senderId==d.lastSenderId;}
   match /threads/{id} {
@@ -152,8 +184,9 @@ service cloud.firestore {
    match /messages/{messageId} {
     allow get:if member(get(/databases/$(database)/documents/threads/$(id)).data);
     allow list:if bounded(50) && member(get(/databases/$(database)/documents/threads/$(id)).data);
-    allow create:if active() && uuid(messageId) && request.resource.data.keys().hasAll(['senderId','body','createdAt']) && request.resource.data.keys().hasOnly(['senderId','body','createdAt']) && owner(request.resource.data.senderId) && member(get(/databases/$(database)/documents/threads/$(id)).data) && request.resource.data.body is string && request.resource.data.body.size()>=1 && request.resource.data.body.size()<=2000 && request.resource.data.createdAt==request.time && getAfter(/databases/$(database)/documents/threads/$(id)).data.lastMessageId==messageId && getAfter(/databases/$(database)/documents/threads/$(id)).data.lastSenderId==request.resource.data.senderId && getAfter(/databases/$(database)/documents/threads/$(id)).data.updatedAt==request.time;
-    allow update,delete:if false;
+    allow create:if active() && uuid(messageId) && request.resource.data.keys().hasAll(['senderId','body','createdAt']) && request.resource.data.keys().hasOnly(['senderId','body','createdAt','replyTo']) && owner(request.resource.data.senderId) && member(get(/databases/$(database)/documents/threads/$(id)).data) && request.resource.data.body is string && request.resource.data.body.size()>=1 && request.resource.data.body.size()<=2000 && request.resource.data.createdAt==request.time && (request.resource.data.get('replyTo','')=='' || (uuid(request.resource.data.replyTo) && exists(/databases/$(database)/documents/threads/$(id)/messages/$(request.resource.data.replyTo)))) && getAfter(/databases/$(database)/documents/threads/$(id)).data.lastMessageId==messageId && getAfter(/databases/$(database)/documents/threads/$(id)).data.lastSenderId==request.resource.data.senderId && getAfter(/databases/$(database)/documents/threads/$(id)).data.updatedAt==request.time;
+    allow update:if active() && owner(resource.data.senderId) && member(get(/databases/$(database)/documents/threads/$(id)).data) && resource.data.get('deleted',false)==false && request.time<=resource.data.createdAt+duration.value(15,'m') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body','editedAt','deleted']) && request.resource.data.editedAt==request.time && request.resource.data.body is string && ((request.resource.data.get('deleted',false)==true && request.resource.data.body=='') || (request.resource.data.get('deleted',false)==false && request.resource.data.body.size()>=1 && request.resource.data.body.size()<=2000));
+    allow delete:if false;
    }
   }
   function dealCreate(d,id){

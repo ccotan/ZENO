@@ -1,1 +1,30 @@
-{"indexes":[],"fieldOverrides":[{"collectionGroup":"lotPhotos","fieldPath":"data","indexes":[]},{"collectionGroup":"lots","fieldPath":"traitData","indexes":[]},{"collectionGroup":"messages","fieldPath":"body","indexes":[]}]}
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "lotPhotos",
+      "fieldPath": "data",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "lots",
+      "fieldPath": "traitData",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "body",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "promoImages",
+      "fieldPath": "data",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "reviews",
+      "fieldPath": "text",
+      "indexes": []
+    }
+  ]
+}
