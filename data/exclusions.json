@@ -1,0 +1,1146 @@
+{
+  "version": "26.2",
+  "scope": "Vanilla Java survival plus owner-hidden product families. owner_hidden_* exclusions are curation, not claims about obtainability.",
+  "items": [
+    {
+      "id": "minecraft:acacia_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:acacia_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:acacia_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:acacia_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:acacia_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:acacia_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:acacia_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:air",
+      "reason": "not_an_item"
+    },
+    {
+      "id": "minecraft:allay_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:andesite_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:armadillo_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:axolotl_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:bamboo_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:bamboo_chest_raft",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:bamboo_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:bamboo_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:bamboo_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:bamboo_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:bamboo_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:barrier",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:bat_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:bedrock",
+      "reason": "not_obtainable"
+    },
+    {
+      "id": "minecraft:bee_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:birch_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:birch_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:birch_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:birch_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:birch_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:birch_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:birch_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:blackstone_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:blaze_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:bogged_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:breeze_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:budding_amethyst",
+      "reason": "not_obtainable"
+    },
+    {
+      "id": "minecraft:camel_husk_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:camel_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:cat_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:cave_spider_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:chain_command_block",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:cherry_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:cherry_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:cherry_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:cherry_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:cherry_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:cherry_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:cherry_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:chest_minecart",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:chicken_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:chorus_plant",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:cinnabar_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:cinnabar_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:cobbled_deepslate_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:cobblestone_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:cod_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:command_block",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:command_block_minecart",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:copper_golem_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:cow_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:creaking_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:creeper_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:crimson_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:crimson_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:crimson_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:crimson_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:crimson_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:crimson_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:dark_oak_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:dark_oak_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:dark_oak_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:dark_oak_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:dark_oak_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:dark_oak_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:dark_oak_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:debug_stick",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:deepslate_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:deepslate_tile_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:diorite_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:dirt_path",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:dolphin_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:donkey_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:drowned_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:elder_guardian_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:end_portal_frame",
+      "reason": "not_obtainable"
+    },
+    {
+      "id": "minecraft:end_stone_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:ender_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:ender_dragon_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:enderman_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:endermite_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:evoker_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:exposed_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:exposed_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:exposed_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:exposed_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:farmland",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:fox_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:frog_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:frogspawn",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:ghast_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:glow_squid_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:goat_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:granite_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:guardian_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:happy_ghast_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:heavy_weighted_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:hoglin_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:horse_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:husk_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:infested_chiseled_stone_bricks",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:infested_cobblestone",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:infested_cracked_stone_bricks",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:infested_deepslate",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:infested_mossy_stone_bricks",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:infested_stone",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:infested_stone_bricks",
+      "reason": "no_silverfish_item_drop"
+    },
+    {
+      "id": "minecraft:iron_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:iron_chain",
+      "reason": "owner_hidden_iron_chain"
+    },
+    {
+      "id": "minecraft:iron_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:iron_golem_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:iron_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:jigsaw",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:jungle_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:jungle_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:jungle_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:jungle_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:jungle_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:jungle_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:jungle_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:knowledge_book",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:light",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:light_weighted_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:llama_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:magma_cube_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:mangrove_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:mangrove_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:mangrove_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:mangrove_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:mangrove_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:mangrove_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:mangrove_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:mooshroom_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:mossy_cobblestone_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:mossy_stone_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:mud_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:mule_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:nautilus_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:nether_brick_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:nether_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:oak_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:oak_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:oak_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:oak_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:oak_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:oak_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:oak_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:ocelot_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:oxidized_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:oxidized_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:oxidized_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:oxidized_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:pale_oak_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:pale_oak_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:pale_oak_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:pale_oak_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:pale_oak_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:pale_oak_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:pale_oak_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:panda_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:parched_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:parrot_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:petrified_oak_slab",
+      "reason": "legacy_only"
+    },
+    {
+      "id": "minecraft:phantom_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:pig_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:piglin_brute_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:piglin_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:pillager_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:player_head",
+      "reason": "commands_only"
+    },
+    {
+      "id": "minecraft:polar_bear_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:polished_blackstone_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:polished_blackstone_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:polished_blackstone_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:polished_blackstone_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:polished_cinnabar_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:polished_deepslate_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:polished_sulfur_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:polished_tuff_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:prismarine_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:pufferfish_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:rabbit_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:ravager_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:red_nether_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:red_sandstone_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:reinforced_deepslate",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:repeating_command_block",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:resin_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:salmon_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:sandstone_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:sheep_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:shulker_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:silverfish_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:skeleton_horse_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:skeleton_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:slime_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:sniffer_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:snow_golem_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:spawner",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:spider_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:spruce_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:spruce_chest_boat",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:spruce_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:spruce_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:spruce_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:spruce_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:spruce_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:squid_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:stone_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:stone_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:stone_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:stray_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:strider_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:structure_block",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:structure_void",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:sulfur_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:sulfur_cube_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:sulfur_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:suspicious_gravel",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:suspicious_sand",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:tadpole_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:test_block",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:test_instance_block",
+      "reason": "operator_only"
+    },
+    {
+      "id": "minecraft:trader_llama_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:trapped_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:trial_spawner",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:tropical_fish_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:tuff_brick_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:tuff_wall",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:turtle_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:vault",
+      "reason": "no_item_drop"
+    },
+    {
+      "id": "minecraft:vex_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:villager_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:vindicator_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:wandering_trader_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:warden_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:warped_button",
+      "reason": "owner_hidden_buttons"
+    },
+    {
+      "id": "minecraft:warped_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:warped_fence",
+      "reason": "owner_hidden_fences"
+    },
+    {
+      "id": "minecraft:warped_fence_gate",
+      "reason": "owner_hidden_gates"
+    },
+    {
+      "id": "minecraft:warped_pressure_plate",
+      "reason": "owner_hidden_pressure_plates"
+    },
+    {
+      "id": "minecraft:warped_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:waxed_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:waxed_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:waxed_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:waxed_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:waxed_exposed_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:waxed_exposed_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:waxed_exposed_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:waxed_exposed_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:waxed_oxidized_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:waxed_oxidized_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:waxed_oxidized_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:waxed_oxidized_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:waxed_weathered_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:waxed_weathered_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:waxed_weathered_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:waxed_weathered_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:weathered_copper_bars",
+      "reason": "owner_hidden_walls"
+    },
+    {
+      "id": "minecraft:weathered_copper_chest",
+      "reason": "owner_hidden_chests"
+    },
+    {
+      "id": "minecraft:weathered_copper_door",
+      "reason": "owner_hidden_doors"
+    },
+    {
+      "id": "minecraft:weathered_copper_trapdoor",
+      "reason": "owner_hidden_trapdoors"
+    },
+    {
+      "id": "minecraft:witch_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:wither_skeleton_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:wither_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:wolf_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:zoglin_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:zombie_horse_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:zombie_nautilus_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:zombie_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:zombie_villager_spawn_egg",
+      "reason": "spawn_egg"
+    },
+    {
+      "id": "minecraft:zombified_piglin_spawn_egg",
+      "reason": "spawn_egg"
+    }
+  ]
+}
