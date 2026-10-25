@@ -15,9 +15,9 @@ const observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.is
 export function playerStatus(id){const el=document.createElement('span');el.className='mc-status';el.dataset.mcPlayer=id;el.textContent=en()?'Checking player…':'Проверка игрока…';const v=cache.get(id);if(v)paint(el,v);observer.observe(el);return el}
 function nodes(){return [...document.querySelectorAll('[data-mc-player]')].filter(e=>e.dataset.mcVisible==='yes'&&e.getClientRects().length)}
 async function tick(){
- // Observe at most twelve unique visible profiles per batch. Never scan the full catalogue.
+ // Observe at most three unique visible profiles per batch. Never scan the full catalogue.
  if(pending||document.hidden||Date.now()<next)return;
- const ids=[...new Set(nodes().map(e=>e.dataset.mcPlayer))].filter(id=>!cache.has(id)||Date.now()-cache.get(id)._at>60000).slice(0,12);if(!ids.length)return;
+ const ids=[...new Set(nodes().map(e=>e.dataset.mcPlayer))].filter(id=>!cache.has(id)||Date.now()-cache.get(id)._at>60000).slice(0,3);if(!ids.length)return;
  pending=true;next=Date.now()+5000;
  try{const rows=await getPresence(ids);if(!Array.isArray(rows))throw Error('response');for(const row of rows)if(ids.includes(row.publicId))cache.set(row.publicId,{...row,_at:Date.now()})}
  catch{for(const id of ids){const prev=cache.get(id);cache.set(id,{...prev,verified:prev?.verified??false,online:null,checkedAt:null,_at:Date.now(),failed:true})}}

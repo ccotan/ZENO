@@ -12,5 +12,6 @@ export const config = Object.freeze({
   discordAuthOrigin: "https://zeno-discord-auth.ccotanno.workers.dev",
   appCheckSiteKey: "",
   useEmulators: false,
-  functionsRegion: "europe-west1",
+  // Public origin only; the partner key is a Cloudflare Secret, never a browser value.
+  marketApiOrigin: "https://zeno-discord-auth.ccotanno.workers.dev",
 });
