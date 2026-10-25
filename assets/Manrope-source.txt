@@ -1,0 +1,3 @@
+Manrope, SIL Open Font License 1.1.
+Source: https://github.com/google/fonts/tree/main/ofl/manrope
+Variable font is locally bundled as TrueType.

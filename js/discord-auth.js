@@ -1,3 +1,4 @@
+import { initializeAppCheckIfConfigured } from './app-check.js';
 import { config } from './config.js';
 let client, sdkPromise, user=null, busy=false, initialized=false, statusText=['',''];
 const $=s=>document.querySelector(s), en=()=>document.documentElement.lang==='en';
@@ -11,6 +12,7 @@ async function sdk() {
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
   const [app,auth]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js')]);
   const firebaseApp=app.getApps().length?app.getApp():app.initializeApp(config.firebase);
+  await initializeAppCheckIfConfigured(firebaseApp);
   const instance=auth.getAuth(firebaseApp);
   await auth.setPersistence(instance,auth.browserLocalPersistence);
   await instance.authStateReady();

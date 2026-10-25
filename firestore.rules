@@ -5,6 +5,9 @@ service cloud.firestore {
 
   function accountUid(uid){return uid is string && uid.matches('discord:[0-9]{17,20}');}
   function blocked(uid){return exists(/databases/$(database)/documents/userBlocks/$(uid)) && get(/databases/$(database)/documents/userBlocks/$(uid)).data.blocked==true;}
+  function tradeAllowed(id){let p=get(/databases/$(database)/documents/tradeAccess/$(id)).data;return p.allowed==true && !blocked(p.ownerUid) && p.checkedAt<=request.time && request.time<p.checkedAt+duration.value(60,'s') && get(/databases/$(database)/documents/publicProfiles/$(id)).data.minecraftVerified==true;}
+  function bothAllowed(d){return tradeAllowed(d.sellerId) && tradeAllowed(d.buyerId);}
+  match /tradeAccess/{id}{allow get:if signed() && owner(id);allow list,write:if false;}
   function active(){return signed() && !blocked(request.auth.uid);}
   function roleOf(uid){return exists(/databases/$(database)/documents/staff/$(uid))?get(/databases/$(database)/documents/staff/$(uid)).data.role:'none';}
   function staff(){return active() && roleOf(request.auth.uid) in ['owner','admin','moderator'];}
@@ -36,6 +39,7 @@ service cloud.firestore {
   function reportTarget(d,id){return
    (active() && d.targetKind=='lot' && d.targetId is string && d.targetId.size()<=60 && uuid(d.targetGeneration) && get(/databases/$(database)/documents/lots/$(d.targetId)).data.id==d.targetGeneration && id=='lot_'+d.targetId+'_'+d.targetGeneration+'_'+request.auth.uid) ||
    (active() && d.targetKind=='profile' && pid(d.targetId) && d.targetGeneration=='' && exists(/databases/$(database)/documents/publicProfiles/$(d.targetId)) && id=='profile_'+d.targetId+'_'+request.auth.uid) ||
+   (active() && d.targetKind=='thread' && d.targetId is string && d.targetId.size()<=180 && d.targetGeneration=='' && member(get(/databases/$(database)/documents/threads/$(d.targetId)).data) && id=='thread_'+d.targetId+'_'+request.auth.uid) ||
    (signed() && d.targetKind=='appeal' && d.targetId==request.auth.uid && blocked(request.auth.uid) && d.targetGeneration==get(/databases/$(database)/documents/userBlocks/$(request.auth.uid)).data.lastAuditId && id=='appeal_'+request.auth.uid+'_'+d.targetGeneration);
   }
   function reportCreate(d,id){return signed() && d.keys().hasAll(['reporterUid','targetKind','targetId','targetGeneration','category','text','status','resolution','handledBy','lastAuditId','createdAt','updatedAt']) && d.keys().hasOnly(['reporterUid','targetKind','targetId','targetGeneration','category','text','status','resolution','handledBy','lastAuditId','createdAt','updatedAt']) && d.reporterUid==request.auth.uid && d.category in ['fraud','spam','prohibited','other'] && d.text is string && d.text.size()>=10 && d.text.size()<=1500 && d.status=='open' && d.resolution=='' && d.handledBy=='' && d.lastAuditId=='' && d.createdAt==request.time && d.updatedAt==request.time && reportTarget(d,id);}
@@ -105,7 +109,7 @@ service cloud.firestore {
    allow get:if signed() && (request.auth.uid==uid || staff());
    allow list:if staff() && bounded(50);
    allow update,delete:if false;
-   allow create:if active() && request.auth.uid==uid && request.resource.data.keys().hasAll(['publicId','createdAt']) && request.resource.data.keys().hasOnly(['publicId','createdAt']) && pid(request.resource.data.publicId) && request.resource.data.createdAt==request.time && !exists(/databases/$(database)/documents/publicProfiles/$(request.resource.data.publicId)) && getAfter(/databases/$(database)/documents/publicProfiles/$(request.resource.data.publicId)).data.createdAt==request.time;
+   allow create:if false;
    match /favorites/{key} {
     allow get,delete:if signed() && request.auth.uid==uid;
     allow list:if signed() && request.auth.uid==uid && bounded(100);
@@ -127,8 +131,7 @@ service cloud.firestore {
    allow get:if true;
    allow list:if staff() && bounded(50);
    allow delete:if false;
-   allow create:if active() && pid(id) && profileOK(request.resource.data) && request.resource.data.createdAt==request.time && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.publicId==id;
-   allow update:if active() && owner(id) && profileOK(request.resource.data) && request.resource.data.createdAt==resource.data.createdAt;
+   allow create,update:if false;
   }
   function favoriteOK(d,key){
    return d.keys().hasAll(['kind','sellerId','lotDoc','generationId','createdAt']) && d.keys().hasOnly(['kind','sellerId','lotDoc','generationId','createdAt']) && pid(d.sellerId) && d.createdAt==request.time && (
@@ -141,7 +144,7 @@ service cloud.firestore {
   function res(d){return d.get('reservedQty',0);}
   function sold(d){return d.get('soldQty',0);}
   function stockOK(d){return d.availableQty is int && d.reservedQty is int && d.soldQty is int && d.availableQty>=0 && d.reservedQty>=0 && d.soldQty>=0 && d.availableQty+d.reservedQty+d.soldQty==d.quantity && d.updatedAt==request.time;}
-  function lotCreate(d,id){return d.keys().hasAll(['id','sellerId','slot','itemKey','nickname','quantity','unitPrice','customName','traitData','createdAt','updatedAt','availableQty','reservedQty','soldQty','lastOperationId','lastOperation','hasPhoto']) && d.keys().hasOnly(['id','sellerId','slot','itemKey','nickname','quantity','unitPrice','customName','traitData','createdAt','updatedAt','availableQty','reservedQty','soldQty','lastOperationId','lastOperation','hasPhoto','visibility']) && active() && visibility(d)=='active' && owner(d.sellerId) && pid(d.sellerId) && d.slot is int && d.slot>=0 && d.slot<50 && id==d.sellerId+'_'+string(d.slot) && uuid(d.id) && validItem(d.itemKey) && amountsOK(d) && d.nickname==get(/databases/$(database)/documents/publicProfiles/$(d.sellerId)).data.minecraftName && d.nickname.matches('[A-Za-z0-9_]{3,16}') && d.customName is string && d.customName.size()<=80 && d.traitData is string && d.traitData.size()<=6000 && d.createdAt==request.time && stockOK(d) && d.availableQty==d.quantity && d.reservedQty==0 && d.soldQty==0 && d.lastOperationId=='' && d.lastOperation=='' && d.hasPhoto is bool && (!d.hasPhoto || getAfter(/databases/$(database)/documents/lotPhotos/$(id)).data.generationId==d.id);}
+  function lotCreate(d,id){return d.keys().hasAll(['id','sellerId','slot','itemKey','nickname','quantity','unitPrice','customName','traitData','createdAt','updatedAt','availableQty','reservedQty','soldQty','lastOperationId','lastOperation','hasPhoto']) && d.keys().hasOnly(['id','sellerId','slot','itemKey','nickname','quantity','unitPrice','customName','traitData','createdAt','updatedAt','availableQty','reservedQty','soldQty','lastOperationId','lastOperation','hasPhoto','visibility']) && active() && tradeAllowed(d.sellerId) && visibility(d)=='active' && owner(d.sellerId) && pid(d.sellerId) && d.slot is int && d.slot>=0 && d.slot<50 && id==d.sellerId+'_'+string(d.slot) && uuid(d.id) && validItem(d.itemKey) && amountsOK(d) && d.nickname==get(/databases/$(database)/documents/publicProfiles/$(d.sellerId)).data.minecraftName && d.nickname.matches('[A-Za-z0-9_]{3,16}') && d.customName is string && d.customName.size()<=80 && d.traitData is string && d.traitData.size()<=6000 && d.createdAt==request.time && stockOK(d) && d.availableQty==d.quantity && d.reservedQty==0 && d.soldQty==0 && d.lastOperationId=='' && d.lastOperation=='' && d.hasPhoto is bool && (!d.hasPhoto || getAfter(/databases/$(database)/documents/lotPhotos/$(id)).data.generationId==d.id);}
   function stockAfter(lotDoc,gen,dealId,op,q){
    let before=get(/databases/$(database)/documents/lots/$(lotDoc)).data;
    let after=getAfter(/databases/$(database)/documents/lots/$(lotDoc)).data;
@@ -157,11 +160,13 @@ service cloud.firestore {
     (d.lastOperation=='release' && get(/databases/$(database)/documents/deals/$(d.lastOperationId)).data.status in ['pending','accepted'] && order.status=='cancelled' && owner(order.cancelledBy)) ||
     (d.lastOperation=='complete' && get(/databases/$(database)/documents/deals/$(d.lastOperationId)).data.status=='accepted' && order.status=='completed' && order.buyerConfirmed && order.sellerConfirmed));
   }
+  function ownLotEdit(d){return active() && (tradeAllowed(resource.data.sellerId) || (d.get('salePaused',false)==true && d.diff(resource.data).affectedKeys().hasOnly(['salePaused','updatedAt']))) && owner(resource.data.sellerId) && visibility(resource.data)=='active' && d.diff(resource.data).affectedKeys().hasOnly(['unitPrice','quantity','availableQty','customName','salePaused','updatedAt']) && amountsOK(d) && stockOK(d) && d.reservedQty==res(resource.data) && d.soldQty==sold(resource.data) && d.customName is string && d.customName.size()<=80 && d.get('salePaused',false) is bool;}
+  function ownLotBump(d){return active() && tradeAllowed(resource.data.sellerId) && owner(resource.data.sellerId) && visibility(resource.data)=='active' && !resource.data.get('salePaused',false) && av(resource.data)>0 && d.diff(resource.data).affectedKeys().hasOnly(['createdAt','bumpedAt','publishedAt','updatedAt']) && d.createdAt==request.time && d.bumpedAt==request.time && d.updatedAt==request.time && d.publishedAt==resource.data.get('publishedAt',resource.data.createdAt) && (!('bumpedAt' in resource.data) || request.time>=resource.data.bumpedAt+duration.value(24,'h'));}
   match /lots/{id} {
    allow get:if true;
    allow list:if bounded(500);
    allow create:if lotCreate(request.resource.data,id);
-   allow update:if lotStockUpdate(request.resource.data,id) || lotModerate(request.resource.data,id);
+   allow update:if ownLotEdit(request.resource.data) || ownLotBump(request.resource.data) || lotStockUpdate(request.resource.data,id) || lotModerate(request.resource.data,id);
    allow delete:if (owner(resource.data.sellerId) && res(resource.data)==0 && !existsAfter(/databases/$(database)/documents/lotPhotos/$(id))) || staffDeleteLot(id);
   }
   match /lotPhotos/{id} {
@@ -191,13 +196,13 @@ service cloud.firestore {
   }
   function dealCreate(d,id){
    let l=get(/databases/$(database)/documents/lots/$(d.lotDoc)).data;
-   return uuid(id) && d.keys().hasAll(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','quantity','unitPrice','total','status','buyerConfirmed','sellerConfirmed','cancelledBy','createdAt','updatedAt']) && d.keys().hasOnly(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','quantity','unitPrice','total','status','buyerConfirmed','sellerConfirmed','cancelledBy','createdAt','updatedAt']) && active() && visibility(l)=='active' && owner(d.buyerId) && d.sellerId!=d.buyerId && d.sellerId==l.sellerId && d.members==[d.sellerId,d.buyerId] && d.lotGenerationId==l.id && d.itemKey==l.itemKey && d.title==l.customName && amountsOK(d) && d.unitPrice==l.unitPrice && d.quantity<=av(l) && d.total==d.quantity*d.unitPrice && d.status=='pending' && d.buyerConfirmed==false && d.sellerConfirmed==false && d.cancelledBy=='' && d.createdAt==request.time && d.updatedAt==request.time && stockAfter(d.lotDoc,d.lotGenerationId,id,'reserve',d.quantity);
+   return uuid(id) && d.keys().hasAll(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','quantity','unitPrice','total','status','buyerConfirmed','sellerConfirmed','cancelledBy','createdAt','updatedAt']) && d.keys().hasOnly(['sellerId','buyerId','members','lotDoc','lotGenerationId','itemKey','title','quantity','unitPrice','total','status','buyerConfirmed','sellerConfirmed','cancelledBy','createdAt','updatedAt']) && active() && bothAllowed(d) && visibility(l)=='active' && !l.get('salePaused',false) && owner(d.buyerId) && d.sellerId!=d.buyerId && d.sellerId==l.sellerId && d.members==[d.sellerId,d.buyerId] && d.lotGenerationId==l.id && d.itemKey==l.itemKey && d.title==l.customName && amountsOK(d) && d.unitPrice==l.unitPrice && d.quantity<=av(l) && d.total==d.quantity*d.unitPrice && d.status=='pending' && d.buyerConfirmed==false && d.sellerConfirmed==false && d.cancelledBy=='' && d.createdAt==request.time && d.updatedAt==request.time && stockAfter(d.lotDoc,d.lotGenerationId,id,'reserve',d.quantity);
   }
   function confirms(d){return (owner(resource.data.buyerId) && !resource.data.buyerConfirmed && d.buyerConfirmed==true && d.sellerConfirmed==resource.data.sellerConfirmed) || (owner(resource.data.sellerId) && !resource.data.sellerConfirmed && d.sellerConfirmed==true && d.buyerConfirmed==resource.data.buyerConfirmed);}
   function dealUpdate(d,id){return member(resource.data) && d.diff(resource.data).affectedKeys().hasOnly(['status','buyerConfirmed','sellerConfirmed','cancelledBy','updatedAt']) && d.updatedAt==request.time && (
-   (active() && resource.data.status=='pending' && d.status=='accepted' && owner(d.sellerId) && !d.buyerConfirmed && !d.sellerConfirmed && d.cancelledBy=='') ||
+   (active() && bothAllowed(d) && request.time<resource.data.createdAt+duration.value(48,'h') && resource.data.status=='pending' && d.status=='accepted' && owner(d.sellerId) && !d.buyerConfirmed && !d.sellerConfirmed && d.cancelledBy=='') ||
    (resource.data.status in ['pending','accepted'] && d.status=='cancelled' && owner(d.cancelledBy) && d.buyerConfirmed==resource.data.buyerConfirmed && d.sellerConfirmed==resource.data.sellerConfirmed && stockAfter(d.lotDoc,d.lotGenerationId,id,'release',d.quantity)) ||
-   (resource.data.status=='accepted' && confirms(d) && d.cancelledBy=='' && ((d.status=='accepted' && !(d.buyerConfirmed && d.sellerConfirmed)) || (d.status=='completed' && d.buyerConfirmed && d.sellerConfirmed && stockAfter(d.lotDoc,d.lotGenerationId,id,'complete',d.quantity)))));
+   (active() && bothAllowed(d) && request.time<resource.data.createdAt+duration.value(48,'h') && resource.data.status=='accepted' && confirms(d) && d.cancelledBy=='' && ((d.status=='accepted' && !(d.buyerConfirmed && d.sellerConfirmed)) || (d.status=='completed' && d.buyerConfirmed && d.sellerConfirmed && stockAfter(d.lotDoc,d.lotGenerationId,id,'complete',d.quantity)))));
   }
   match /deals/{id} {
    allow get:if member(resource.data);
@@ -206,6 +211,15 @@ service cloud.firestore {
    allow update:if dealUpdate(request.resource.data,id);
    allow delete:if false;
   }
+  match /itemSubscriptions/{id}{
+   allow get,delete:if signed() && resource.data.ownerUid==request.auth.uid;
+   allow list:if signed() && bounded(50) && resource.data.ownerUid==request.auth.uid;
+   allow create,update:if active() && request.resource.data.keys().hasAll(['ownerUid','itemKey','maxPrice','enabled','updatedAt']) && request.resource.data.keys().hasOnly(['ownerUid','itemKey','maxPrice','enabled','updatedAt']) && request.resource.data.ownerUid==request.auth.uid && id==request.auth.uid+'_'+request.resource.data.itemKey && validItem(request.resource.data.itemKey) && request.resource.data.maxPrice is int && request.resource.data.maxPrice>=2 && request.resource.data.maxPrice<=1000000000 && request.resource.data.enabled is bool && request.resource.data.updatedAt==request.time;
+  }
+  match /users/{uid}/alerts/{id}{allow get:if signed() && request.auth.uid==uid;allow list:if signed() && request.auth.uid==uid && bounded(50);allow update:if signed() && request.auth.uid==uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) && request.resource.data.read==true;allow create,delete:if false;}
+  match /sellerStats/{id}{allow get:if true;allow list,write:if false;}
+  match /itemStats/{id}{allow get:if true;allow list,write:if false;}
+  match /systemStatus/{id}{allow get:if id=='trading';allow list,write:if false;}
   match /{document=**}{allow read,write:if false;}
  }
 }
