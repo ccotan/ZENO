@@ -16,7 +16,21 @@ export async function getPresence(profileIds){
  if(!Array.isArray(profileIds)||profileIds.length>3)throw fail('minecraft-unavailable');
  const market=await import('./market.js');
  return Promise.all(profileIds.map(async id=>{const p=await market.publicProfile(id,true);if(!p?.minecraftVerified||!/^[A-Za-z0-9_]{3,16}$/.test(p.minecraftName||'')||!/^[a-f0-9]{32}$/i.test(p.minecraftUuid||''))return {publicId:id,verified:false,online:null,lastSeen:null};
- let online=null,lastSeen=null;try{const r=await fetch('https://chromacube.deforce.site/u/'+encodeURIComponent(p.minecraftName)+'?format=json',{credentials:'omit',headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000)});const b=await r.json();if(r.ok&&b.v===1&&b.name?.toLowerCase()===p.minecraftName.toLowerCase()&&typeof b.uuid==='string'&&b.uuid.toLowerCase().replaceAll('-','')===p.minecraftUuid&&typeof b.online==='boolean'){online=b.online;if(typeof b.last_seen==='string'&&Number.isFinite(Date.parse(b.last_seen)))lastSeen=new Date(b.last_seen).toISOString()}}catch{}
+ let online=null,lastSeen=null,presenceError=null;
+ try{
+  const r=await fetch('https://chromacube.deforce.site/u/'+encodeURIComponent(p.minecraftName)+'?format=json',{credentials:'omit',headers:{Accept:'application/json'},signal:AbortSignal.timeout(25000)});
+  if(!r.ok){presenceError='http-'+r.status}
+  else{
+   const b=await r.json();
+   if(b.v!==1)presenceError='response-version';
+   else if(typeof b.name!=='string'||b.name.toLowerCase()!==p.minecraftName.toLowerCase())presenceError='name-mismatch';
+   else if(typeof b.uuid!=='string'||b.uuid.toLowerCase().replaceAll('-','')!==p.minecraftUuid)presenceError='uuid-mismatch';
+   else if(typeof b.online!=='boolean')presenceError='online-missing';
+   else{online=b.online;if(typeof b.last_seen==='string'&&Number.isFinite(Date.parse(b.last_seen)))lastSeen=new Date(b.last_seen).toISOString()}
+  }
+ }catch(e){presenceError=e?.name==='TimeoutError'||e?.name==='AbortError'?'timeout':e?.name==='SyntaxError'?'invalid-json':'network-or-cors'}
+ // Only fixed diagnostic labels. Never log response bodies, headers or profile data.
+ if(presenceError)console.warn('[ZENO presence]',presenceError);
  return {publicId:id,verified:true,name:p.minecraftName,online,lastSeen,checkedAt:new Date().toISOString()};
  }));
 }
