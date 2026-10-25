@@ -1,4 +1,6 @@
-import {playerStatus} from './minecraft-ui.js';
+import { message } from "./localization.js";
+import { pair, loadLocales } from "./localization.js";
+import { playerStatus } from "./minecraft-ui.js";
 import * as m from "./market.js";
 import { trading } from "./trading-ui.js";
 import { deadline } from "./trading-data.js";
@@ -13,151 +15,7 @@ export const experience = {
   async send() {},
   refresh() {},
 };
-const labels = {
-  editNickname: ["Изменить ник Minecraft", "Edit Minecraft nickname"],
-  rating: ["Рейтинг", "Rating"],
-  deals: ["Сделки", "Deals"],
-  markAllRead: ["Отметить всё прочитанным", "Mark all as read"],
-  acceptAction: ["Принять запрос", "Accept request"],
-  confirmAction: ["Подтвердить обмен", "Confirm exchange"],
-  cancelAction: ["Отменить сделку", "Cancel trade"],
-  sponsored: ["Реклама / сообщество ZENO", "Sponsored / ZENO community"],
-  details: ["Подробнее", "Learn more"],
-  ads: ["Реклама", "Advertising"],
-  management: ["УПРАВЛЕНИЕ ZENO", "ZENO MANAGEMENT"],
-  adsHelp: [
-    "До 10 баннеров. Публиковать могут администратор и владелец. Карусель переключается каждые 7 секунд; при наведении, фокусе и в скрытой вкладке показ приостанавливается. Время указано по вашему устройству.",
-    "Up to 10 banners. Administrators and owners can publish. Slides change every 7 seconds; hover, focus or a hidden tab pauses rotation. Times use your device timezone.",
-  ],
-  addBanner: ["Добавить баннер", "Add banner"],
-  newBanner: ["Новый баннер", "New banner"],
-  editBanner: ["Редактирование баннера", "Edit banner"],
-  title: ["Заголовок", "Title"],
-  description: ["Описание", "Description"],
-  buttonText: ["Текст кнопки", "Button text"],
-  link: ["Ссылка HTTPS", "HTTPS link"],
-  starts: ["Начало показа", "Starts"],
-  ends: ["Конец показа", "Ends"],
-  bannerImage: ["Изображение баннера", "Banner image"],
-  imageHelp: [
-    "JPG, PNG или WebP до 5 МиБ. Рекомендуется широкий баннер. Изображение сжимается перед сохранением; оригинал не хранится.",
-    "JPG, PNG or WebP, up to 5 MiB. A wide image is recommended. Images are compressed; originals are not stored.",
-  ],
-  removeImage: ["Удалить текущее изображение", "Remove current image"],
-  enableBanner: ["Баннер включён", "Banner enabled"],
-  saveBanner: ["Сохранить баннер", "Save banner"],
-  deleteBanner: ["Удалить баннер", "Delete banner"],
-  preview: ["Предпросмотр", "Preview"],
-  draft: ["Черновик", "Draft"],
-  noAds: ["Баннеров пока нет.", "No banners yet."],
-  disabled: ["Выключен", "Disabled"],
-  expired: ["Показ завершён", "Expired"],
-  scheduled: ["Запланирован", "Scheduled"],
-  active: ["Активен", "Active"],
-  saved: ["Сохранено.", "Saved."],
-  confirmDeleteBanner: [
-    "Удалить баннер и изображение безвозвратно?",
-    "Permanently delete this banner and its image?",
-  ],
-  pauseSlides: ["Остановить автопрокрутку", "Pause slideshow"],
-  playSlides: ["Продолжить автопрокрутку", "Resume slideshow"],
-  findChat: ["Найти диалог…", "Find a conversation…"],
-  findMessage: ["Поиск в загруженных сообщениях…", "Search loaded messages…"],
-  findDeal: ["Найти сделку…", "Find a deal…"],
-  newMessages: ["К новым сообщениям", "Jump to new messages"],
-  enterHint: [
-    "Enter: отправить. Shift+Enter: новая строка",
-    "Enter to send · Shift+Enter for a new line",
-  ],
-  listings: ["Объявления", "Listings"],
-  reviews: ["Отзывы", "Reviews"],
-  verifiedReviews: [
-    "Отзывы могут оставлять только покупатели после завершённой сделки. Показано до 50 отзывов; оценка рассчитана по показанным.",
-    "Only buyers with a completed deal can review. Up to 50 reviews are shown; the rating is based on those shown.",
-  ],
-  writeReview: ["Оставить отзыв", "Write a review"],
-  yourRating: ["Ваша оценка", "Your rating"],
-  reviewText: [
-    "Что понравилось или пошло не так?",
-    "What went well or could be improved?",
-  ],
-  reviewNotice: [
-    "Один отзыв на завершённую сделку. После публикации текст нельзя изменить. Не публикуйте личные данные.",
-    "One review per completed deal. Published reviews cannot be edited. Do not publish personal data.",
-  ],
-  publishReview: ["Опубликовать отзыв", "Publish review"],
-  allDeals: ["Все статусы", "All statuses"],
-  allTypes: ["Покупки и продажи", "Buying and selling"],
-  pending: ["Ожидает продавца", "Awaiting seller"],
-  accepted: ["Обмен согласован", "Trade agreed"],
-  completed: ["Завершена", "Completed"],
-  cancelled: ["Отменена", "Cancelled"],
-  purchases: ["Покупки", "Purchases"],
-  sales: ["Продажи", "Sales"],
-  publicProfile: ["Посмотреть свой профиль", "View public profile"],
-  chats: ["Чаты", "Chats"],
-  favorites: ["Избранное", "Favorites"],
-  sound: ["Звук уведомлений", "Notification sound"],
-  on: ["Вкл.", "On"],
-  off: ["Выкл.", "Off"],
-  sectionHelp: ["Подсказки и ограничения раздела", "Section help and limits"],
-  save: ["Сохранить", "Save"],
-  copy: ["Копировать", "Copy"],
-  reply: ["Ответить", "Reply"],
-  edit: ["Изменить", "Edit"],
-  remove: ["Удалить", "Delete"],
-  deleted: ["Сообщение удалено", "Message deleted"],
-  editing: ["Редактирование", "Editing message"],
-  replying: ["Ответ на сообщение", "Replying to message"],
-  edited: ["изменено", "edited"],
-  noReviews: [
-    "Отзывов пока нет. Завершите первую сделку, и покупатель сможет оставить отзыв.",
-    "No reviews yet. Complete a first deal so a buyer can leave a review.",
-  ],
-  verified: ["Покупка подтверждена сделкой", "Verified completed deal"],
-  respond: ["Ответить на отзыв", "Respond to review"],
-  sellerResponse: ["Ответ продавца", "Seller response"],
-  hideReview: ["Скрыть отзыв", "Hide review"],
-  showReview: ["Восстановить отзыв", "Restore review"],
-  hiddenReview: ["Скрыт модерацией", "Hidden by moderation"],
-  reviewExists: [
-    "Отзыв уже опубликован. Посмотреть его можно в профиле продавца.",
-    "A review has already been published. View it on the seller profile.",
-  ],
-  reviewPublished: ["Отзыв опубликован.", "Review published."],
-  trade: ["Сделка", "Trade"],
-  message: ["Написать", "Message"],
-  request: ["Запрос", "Request"],
-  agreement: ["Согласование", "Agreement"],
-  confirmations: ["Подтверждения", "Confirmations"],
-  finished: ["Завершено", "Finished"],
-  openListing: ["Открыть лот", "Open listing"],
-  noMatch: [
-    "Ничего не найдено. Измените поиск или фильтр.",
-    "No matches. Change your search or filter.",
-  ],
-  inProgress: ["В работе", "In progress"],
-  unread: ["Непрочитано", "Unread"],
-  account: ["Аккаунт", "Account"],
-  player: ["Игрок", "Player"],
-  owner: ["Владелец", "Owner"],
-  admin: ["Администратор", "Administrator"],
-  moderator: ["Модератор", "Moderator"],
-  realtime: ["Обновляется автоматически", "Updates automatically"],
-  offline: [
-    "Данные из кеша · нет связи с сервером",
-    "Cached data · no server connection",
-  ],
-  copied: ["Скопировано", "Copied"],
-  deleteMessage: [
-    "Удалить своё сообщение? Останется отметка об удалении.",
-    "Delete your message? A deleted-message marker will remain.",
-  ],
-  loadOlderReply: [
-    "Исходное сообщение не загружено. Нажмите «Ранние сообщения».",
-    "The original message is not loaded. Use Earlier messages.",
-  ],
-};
+const labels = new Proxy({}, { get: (_, key) => pair("experience", key) });
 export function initExperience(h) {
   const {
     $,
@@ -263,6 +121,26 @@ export function initExperience(h) {
     reviewDeal = null,
     rating = 5,
     reviewUid = null;
+  let reviewFilter = "all";
+  const reviewSelect = n("select");
+  reviewSelect.id = "review-rating-filter";
+  reviewSelect.setAttribute(
+    "aria-label",
+    x(...pair("inline", "taaab4d4f4d8c")),
+  );
+  for (const value of ["all", "5", "4", "3", "2", "1"]) {
+    const o = n(
+      "option",
+      value === "all" ? x(...pair("inline", "tba719d99ae2e")) : value + " / 5",
+    );
+    o.value = value;
+    reviewSelect.append(o);
+  }
+  $("#seller-review-list").before(reviewSelect);
+  reviewSelect.onchange = () => {
+    reviewFilter = reviewSelect.value;
+    renderReviews();
+  };
   function renderReviews() {
     const box = $("#seller-review-list"),
       visible = sellerReviews.filter((r) => !r.hidden),
@@ -275,74 +153,84 @@ export function initExperience(h) {
         "strong",
         visible.length
           ? average.toFixed(1) + " / 5"
-          : x("Нет оценок", "Not rated"),
+          : x(...pair("inline", "t5b970317e5ad")),
       ),
       n("span", t("reviews") + ": " + visible.length),
     );
     box.replaceChildren(
-      ...sellerReviews.map((r) => {
-        const c = n("article", undefined, "v-review"),
-          header = n("header"),
-          copy = n("div");
-        const nick = n("strong", t("player"));
-        copy.append(nick, n("p", t("verified"), "p-hint"));
-        header.append(head(null), copy, stars(r.rating));
-        peerName(r.authorId).then((v) => {
-          if (!c.isConnected) return;
-          nick.textContent = v;
-          header.firstChild.replaceWith(head(v));
-        });
-        c.append(
-          header,
-          n("p", r.text),
-          n("p", fmtDate(r.createdAt), "p-hint"),
-        );
-        if (r.hidden) c.append(n("span", t("hiddenReview"), "v-tag warn"));
-        if (r.response) {
-          const response = n("div", undefined, "v-review-response");
-          response.append(n("strong", t("sellerResponse")), n("p", r.response));
-          c.append(response);
-        }
-        const actions = n("div", undefined, "v-actions");
-        if (m.state.publicId === seller)
-          actions.append(
-            btn("respond", "reply", () =>
-              asyncText(t("respond"), t("sellerResponse"), 600, (text) =>
-                d.respondReview(seller, r.docId, text),
-              ),
-            ),
+      ...sellerReviews
+        .filter(
+          (r) => reviewFilter === "all" || r.rating === Number(reviewFilter),
+        )
+        .map((r) => {
+          const c = n("article", undefined, "v-review"),
+            header = n("header"),
+            copy = n("div");
+          const nick = n("strong", t("player"));
+          copy.append(nick, n("p", t("verified"), "p-hint"));
+          header.append(head(null), copy, stars(r.rating));
+          peerName(r.authorId).then((v) => {
+            if (!c.isConnected) return;
+            nick.textContent = v;
+            header.firstChild.replaceWith(head(v));
+          });
+          c.append(
+            header,
+            n("p", r.text),
+            n("p", fmtDate(r.createdAt), "p-hint"),
           );
-        if (a.isStaff())
-          actions.append(
-            btn(r.hidden ? "showReview" : "hideReview", "shield", () =>
-              asyncText(
-                t(r.hidden ? "showReview" : "hideReview"),
-                x("Причина модерации", "Moderation reason"),
-                500,
-                (text) => d.moderateReview(seller, r, !r.hidden, text),
-                8,
+          if (r.hidden) c.append(n("span", t("hiddenReview"), "v-tag warn"));
+          if (r.response) {
+            const response = n("div", undefined, "v-review-response");
+            response.append(
+              n("strong", t("sellerResponse")),
+              n("p", r.response),
+            );
+            c.append(response);
+          }
+          const actions = n("div", undefined, "v-actions");
+          if (m.state.publicId === seller)
+            actions.append(
+              btn("respond", "reply", () =>
+                asyncText(t("respond"), t("sellerResponse"), 600, (text) =>
+                  d.respondReview(seller, r.docId, text),
+                ),
               ),
-            ),
-          );
-        if (actions.childElementCount) c.append(actions);
-        return c;
-      }),
+            );
+          if (a.isStaff())
+            actions.append(
+              btn(r.hidden ? "showReview" : "hideReview", "shield", () =>
+                asyncText(
+                  t(r.hidden ? "showReview" : "hideReview"),
+                  x(...pair("inline", "t685427de1d89")),
+                  500,
+                  (text) => d.moderateReview(seller, r, !r.hidden, text),
+                  8,
+                ),
+              ),
+            );
+          if (actions.childElementCount) c.append(actions);
+          return c;
+        }),
     );
     if (!sellerReviews.length) box.append(n("p", t("noReviews"), "p-empty"));
     $("#seller-metrics").replaceChildren(
       metric(
         "listings",
-        sellerRows.filter((l) => l.visibility !== "hidden" && !l.salePaused).length,
+        sellerRows.filter((l) => l.visibility !== "hidden" && !l.salePaused)
+          .length,
         "package",
       ),
       metric("reviews", visible.length, "message"),
       metric(
         "rating",
-        visible.length ? average.toFixed(1) + " / 5" : x("Нет", "None"),
+        visible.length
+          ? average.toFixed(1) + " / 5"
+          : x(...pair("inline", "t7331397d02c7")),
         "star",
       ),
     );
-    trading.sellerSummary($("#seller-metrics"),seller);
+    trading.sellerSummary($("#seller-metrics"), seller);
   }
   async function openSeller(id, nick) {
     seller = id;
@@ -354,10 +242,7 @@ export function initExperience(h) {
     stopSellerLots?.();
     stopReviews = stopSellerLots = null;
     show("seller-dialog");
-    $("#seller-status").textContent = x(
-      "Загрузка профиля…",
-      "Loading profile…",
-    );
+    $("#seller-status").textContent = x(...pair("inline", "tb4f37b9b5bc3"));
     $("#seller-results").replaceChildren();
     $("#seller-review-list").replaceChildren();
     const profile = await m.publicProfile(id, true);
@@ -366,18 +251,20 @@ export function initExperience(h) {
     const identity = $("#seller-identity"),
       copy = n("div", undefined, "v-seller-copy"),
       title = n("h2", profile?.minecraftName || nick || t("player"));
-    title.id = "seller-title";title.dataset.mcName=id;
-    copy.append(
-      title,
-      n(
-        "p",
-        x(
-          "Торговля внутри Minecraft · репутация по сделкам",
-          "Minecraft trades · reputation from completed deals",
+    title.id = "seller-title";
+    title.dataset.mcName = id;
+    copy.append(title, n("p", x(...pair("inline", "t0dcf052bac0b"))));
+    if (profile?.createdAt?.toDate)
+      copy.append(
+        n(
+          "p",
+          x(...pair("inline", "tc3ef631088bb")) +
+            new Intl.DateTimeFormat(document.documentElement.lang, {
+              dateStyle: "medium",
+            }).format(profile.createdAt.toDate()),
+          "q-member-since",
         ),
-      ),
-    );
-    if(profile?.createdAt?.toDate)copy.append(n('p',x('На ZENO с ','Member since ')+new Intl.DateTimeFormat(document.documentElement.lang,{dateStyle:'medium'}).format(profile.createdAt.toDate()),'q-member-since'));
+      );
     copy.append(playerStatus(id));
     identity.replaceChildren(head(profile?.minecraftName || nick), copy);
     const follow = btn("favorites", "heart", () => {
@@ -403,8 +290,7 @@ export function initExperience(h) {
       ),
     );
     identity.lastChild.querySelector("span").textContent = x(
-      "Пожаловаться",
-      "Report",
+      ...pair("inline", "t2341294be242"),
     );
     const { f, db } = await m.sdk();
     if (epoch !== sellerEpoch) return;
@@ -423,7 +309,9 @@ export function initExperience(h) {
           cloud: true,
         }));
         $("#seller-results").replaceChildren(
-          ...sellerRows.filter((l) => l.visibility !== "hidden" && !l.salePaused).map(card),
+          ...sellerRows
+            .filter((l) => l.visibility !== "hidden" && !l.salePaused)
+            .map(card),
         );
         $("#seller-status").textContent = t("realtime");
         renderReviews();
@@ -483,7 +371,7 @@ export function initExperience(h) {
     $("#review-submit").disabled = true;
     $("#review-deal-name").textContent =
       (deal.title || name(item(deal.itemKey))) + " · " + deal.docId.slice(0, 8);
-    $("#review-status").textContent = x("Проверка сделки…", "Checking deal…");
+    $("#review-status").textContent = x(...pair("inline", "t7f2306c853b3"));
     try {
       const old = await d.getReview(deal);
       if (m.state.user?.uid !== reviewUid) return;
@@ -573,17 +461,13 @@ export function initExperience(h) {
         return b;
       }),
     );
+    if (
+      m.state.threads.length &&
+      [...box.querySelectorAll("[data-thread]")].every((b) => b.hidden)
+    )
+      box.append(n("p", x(...pair("finish", "emptySearch")), "p-empty"));
     if (!m.state.threads.length)
-      box.append(
-        n(
-          "p",
-          x(
-            "Открой объявление и напиши продавцу. Диалог появится здесь.",
-            "Message a seller from a listing to start a conversation.",
-          ),
-          "p-empty",
-        ),
-      );
+      box.append(n("p", x(...pair("inline", "t49c2413526c8")), "p-empty"));
   }
   function fitComposer() {
     const input = $("#message-text");
@@ -612,7 +496,7 @@ export function initExperience(h) {
       navigator.clipboard
         ?.writeText(msg.body)
         .then(() => toast(t("copied")))
-        .catch(() => toast(x("Не удалось скопировать", "Could not copy"))),
+        .catch(() => toast(x(...pair("inline", "t08361f7447d3")))),
     );
     actions.append(
       iconBtn("reply", "reply", () => {
@@ -623,6 +507,17 @@ export function initExperience(h) {
       }),
       copy,
     );
+    if (msg.senderId !== m.state.publicId)
+      actions.append(
+        iconBtn("report", "shield", () =>
+          h.openReport({
+            kind: "thread",
+            id: activeThread,
+            generation: "",
+            label: x(...pair("inline", "tf77cf1e985cb")) + msg.docId,
+          }),
+        ),
+      );
     if (
       msg.senderId === m.state.publicId &&
       msg.createdAt?.toMillis() &&
@@ -670,7 +565,16 @@ export function initExperience(h) {
         undefined,
         "p-message" + (msg.senderId === m.state.publicId ? " mine" : ""),
       );
-      if(!firstUnread&&msg.senderId!==m.state.publicId&&(msg.createdAt?.toMillis?.()||0)>chatSeenAt){firstUnread=e;box.append(n('div',x('Новые сообщения','New messages'),'q-unread-divider'))}
+      if (
+        !firstUnread &&
+        msg.senderId !== m.state.publicId &&
+        (msg.createdAt?.toMillis?.() || 0) > chatSeenAt
+      ) {
+        firstUnread = e;
+        box.append(
+          n("div", x(...pair("inline", "t54849cf56887")), "q-unread-divider"),
+        );
+      }
       e.id = "message-" + msg.docId;
       e.dataset.messageId = msg.docId;
       if (msg.replyTo) {
@@ -691,8 +595,47 @@ export function initExperience(h) {
         };
         e.append(quote);
       }
-      const body=n("div",undefined,"v-message-body");
-      if(msg.deleted)body.textContent=t("deleted");else{const re=/https?:\/\/[^\s<>]+/gi;let pos=0;for(const match of msg.body.matchAll(re)){body.append(document.createTextNode(msg.body.slice(pos,match.index)));let raw=match[0],url;try{url=new URL(raw)}catch{}if(url&&!url.username&&!url.password){const a=n("a",raw+" · "+x("внешняя ссылка","external link"),"trade-external");a.href=url.href;a.target="_blank";a.rel="noopener noreferrer nofollow";a.onclick=event=>{if(!confirm(x("Открыть внешний сайт ","Open external website ")+url.hostname+"? "+x("Не вводи пароли и коды Discord.","Never enter passwords or Discord codes.")))event.preventDefault()};body.append(a)}else body.append(document.createTextNode(raw));pos=match.index+raw.length}body.append(document.createTextNode(msg.body.slice(pos)))}e.append(body);
+      const body = n("div", undefined, "v-message-body");
+      if (msg.deleted) body.textContent = t("deleted");
+      else {
+        const re = /https?:\/\/[^\s<>]+/gi;
+        let pos = 0;
+        for (const match of msg.body.matchAll(re)) {
+          body.append(
+            document.createTextNode(msg.body.slice(pos, match.index)),
+          );
+          let raw = match[0],
+            url;
+          try {
+            url = new URL(raw);
+          } catch {}
+          if (url && !url.username && !url.password) {
+            const a = n(
+              "a",
+              raw + " · " + x(...pair("inline", "tb4a84adfe8cc")),
+              "trade-external",
+            );
+            a.href = url.href;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer nofollow";
+            a.onclick = (event) => {
+              if (
+                !confirm(
+                  x(...pair("inline", "t2bc36d394a70")) +
+                    url.hostname +
+                    "? " +
+                    x(...pair("inline", "ta6b1f5fb0bb7")),
+                )
+              )
+                event.preventDefault();
+            };
+            body.append(a);
+          } else body.append(document.createTextNode(raw));
+          pos = match.index + raw.length;
+        }
+        body.append(document.createTextNode(msg.body.slice(pos)));
+      }
+      e.append(body);
       if (
         searchMessage &&
         !msg.deleted &&
@@ -706,13 +649,16 @@ export function initExperience(h) {
         n(
           "time",
           fmtTime(msg.createdAt) +
-            (msg.editedAt && !msg.deleted ? " · " + t("edited") : ""),
+            (msg.editedAt && !msg.deleted ? " · " + t("edited") : "") +
+            (msg.senderId === m.state.publicId
+              ? " · " + x(...pair("inline", "t32babb313a99"))
+              : ""),
         ),
       );
       if (!msg.deleted) {
         const tools = n("details", undefined, "v-message-tools"),
           summary = n("summary", "⋯");
-        summary.title = x("Действия с сообщением", "Message actions");
+        summary.title = x(...pair("inline", "t83805523c719"));
         summary.setAttribute("aria-label", summary.title);
         const actions = messageActions(msg);
         actions.addEventListener("click", () => (tools.open = false));
@@ -738,19 +684,85 @@ export function initExperience(h) {
       box.scrollTop = oldTop;
       $("#chat-bottom").hidden = false;
     }
-    if(messageFirst&&chatSeenAt&&firstUnread){box.scrollTop=Math.max(0,firstUnread.offsetTop-box.offsetTop-32);$("#chat-bottom").hidden=box.scrollHeight-box.scrollTop-box.clientHeight<100}
+    if (messageFirst && chatSeenAt && firstUnread) {
+      box.scrollTop = Math.max(0, firstUnread.offsetTop - box.offsetTop - 32);
+      $("#chat-bottom").hidden =
+        box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+    }
     messageFirst = false;
   }
   function chatOpened(id, th) {
     activeThread = id;
-    let safety=$("#chat-safety");if(!safety){safety=n('div',undefined,'trade-chat-safety');safety.id='chat-safety';$('#messages').before(safety)}safety.replaceChildren();if(id){const warning=n('p',x('Не переходи по незнакомым ссылкам и не называй пароли, коды входа и токены. Обмен происходит в Minecraft.','Do not follow unknown links or share passwords, login codes or tokens. Trade takes place in Minecraft.'));const report=n('button',undefined,'v-secondary');report.type='button';report.id='chat-report';report.append(i('shield'),n('span',x('Пожаловаться','Report')));report.onclick=()=>h.openReport({kind:'thread',id,generation:'',label:x('Жалоба на переписку. Опиши нарушение; сотрудникам не открывается весь чат.','Report this conversation. Describe the issue; staff cannot access the full chat.')});safety.append(warning,report)}
+    let safety = $("#chat-safety");
+    if (!safety) {
+      safety = n("div", undefined, "trade-chat-safety");
+      safety.id = "chat-safety";
+      $("#messages").before(safety);
+    }
+    safety.replaceChildren();
+    if (id) {
+      const warning = n("p", x(...pair("inline", "tde826847bc7f")));
+      const report = n("button", undefined, "v-secondary");
+      report.type = "button";
+      report.id = "chat-report";
+      report.append(
+        i("shield"),
+        n("span", x(...pair("inline", "t2341294be242"))),
+      );
+      report.onclick = () =>
+        h.openReport({
+          kind: "thread",
+          id,
+          generation: "",
+          label: x(...pair("inline", "te73e57ce2955")),
+        });
+      const block = n(
+        "button",
+        x(...pair("inline", "tce9bb2e77bff")),
+        "v-secondary",
+      );
+      block.type = "button";
+      block.id = "chat-block";
+      const peer =
+        th?.sellerId === m.state.publicId ? th?.buyerId : th?.sellerId;
+      let blocked = false;
+      function paintBlock() {
+        block.textContent = blocked
+          ? x(...pair("inline", "tdfde380f6f47"))
+          : x(...pair("inline", "tce9bb2e77bff"));
+        block.setAttribute("aria-pressed", String(blocked));
+      }
+      if (peer) {
+        m.getChatBlock(peer)
+          .then((v) => {
+            if (activeThread !== id) return;
+            blocked = v;
+            paintBlock();
+          })
+          .catch(() => {});
+        block.onclick = () =>
+          run(block, $("#chat-status"), async () => {
+            await m.setChatBlock(peer, !blocked);
+            blocked = !blocked;
+            paintBlock();
+            toast(
+              blocked
+                ? x(...pair("inline", "tad3e46992176"))
+                : x(...pair("inline", "t313cc1c2318d")),
+            );
+          });
+      } else block.hidden = true;
+      const actions = n("div", undefined, "release-safety-actions");
+      actions.append(report, block);
+      safety.append(warning, actions);
+    }
     messageFirst = true;
-    chatSeenAt = id ? (m.state.reads.get("thread_"+id)||0) : 0;
+    chatSeenAt = id ? m.state.reads.get("thread_" + id) || 0 : 0;
     messageRows = [];
     clearContext();
     if (!id) {
       $("#chat-peer").replaceChildren(
-        n("p", x("Выберите диалог слева", "Select a conversation")),
+        n("p", x(...pair("inline", "ted1b6264e84b"))),
       );
       $("#messages").replaceChildren();
       $("#message-text").value = "";
@@ -829,11 +841,78 @@ export function initExperience(h) {
       return b;
     }),
   );
+  const quick = n("details", undefined, "release-quick-replies"),
+    summary = n("summary", x(...pair("inline", "t7a5ab9499a42")));
+  quick.append(summary);
+  for (const [ru, en] of [
+    ["Привет! Лот ещё в продаже?", "Hi! Is the listing still available?"],
+    [
+      "Готов обменяться в игре. Где встретимся?",
+      "Ready to trade in game. Where shall we meet?",
+    ],
+    ["Спасибо за обмен!", "Thanks for the trade!"],
+  ]) {
+    const b = n("button", x(ru, en), "chip");
+    b.type = "button";
+    b.dataset.releaseRu = ru;
+    b.dataset.releaseEn = en;
+    b.onclick = () => {
+      const field = $("#message-text");
+      field.value = x(ru, en);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      quick.open = false;
+      field.focus();
+    };
+    quick.append(b);
+  }
+  $("#message-form").before(quick);
+  $("#chat-dialog").addEventListener("close", () => (quick.open = false));
   $("#chat-emoji").onclick = () =>
     ($("#emoji-picker").hidden = !$("#emoji-picker").hidden);
   async function send(id, body) {
-    if (editing) await d.editMessage(id, editing, body);
-    else await m.sendMessage(id, body, replyId);
+    const currentEdit = editing;
+    if (
+      /(?:https?:\/\/|оплат|карт[аыуе]|перевод|payment|bank\s*card|money\s*transfer)/iu.test(
+        body,
+      ) &&
+      !confirm(x(...pair("inline", "tfd04f8729392")))
+    )
+      throw Object.assign(new Error("message-cancelled"), {
+        code: "message-cancelled",
+      });
+    const status = $("#chat-status");
+    status.dataset.sendState = "sending";
+    status.textContent = x(...pair("inline", "t3e59bfcef8a6"));
+    try {
+      if (currentEdit) await d.editMessage(id, currentEdit, body);
+      else await m.sendMessage(id, body, replyId);
+    } catch (e) {
+      if (activeThread === id) {
+        status.dataset.sendState = "error";
+        const retry = n(
+          "button",
+          x(...pair("inline", "t0b576e3983dc")),
+          "text-button",
+        );
+        retry.type = "button";
+        retry.onclick = () => {
+          if (
+            activeThread === id &&
+            $("#message-text").value.trim() === body.trim()
+          )
+            $("#message-form").requestSubmit();
+        };
+        status.replaceChildren(
+          n("span", x(...pair("inline", "t99b02dbc0487"))),
+          retry,
+        );
+      }
+      return false;
+    }
+    if (activeThread === id) {
+      status.dataset.sendState = "sent";
+      status.textContent = x(...pair("inline", "t32babb313a99"));
+    }
     clearContext();
     drafts.delete(id);
     $("#message-length").textContent = "0 / 2000";
@@ -841,7 +920,14 @@ export function initExperience(h) {
   }
   function renderDeals() {
     if (!$("#deals-dialog").open) return;
-    const openCount=m.state.deals.filter(d=>['pending','accepted'].includes(d.status)).length;const reminder=$('#open-reserve-note');reminder.hidden=!openCount;reminder.textContent=x(`Открытых сделок в загруженной истории: ${openCount}. Ненужные запросы лучше отменить, чтобы освободить резерв.`,`Open trades in loaded history: ${openCount}. Cancel unneeded requests to release stock.`);
+    const openCount = m.state.deals.filter((d) =>
+      ["pending", "accepted"].includes(d.status),
+    ).length;
+    const reminder = $("#open-reserve-note");
+    reminder.hidden = !openCount;
+    reminder.textContent = message("dynamic", "m6c9a18a7b572", {
+      v0: openCount,
+    });
     const all = m.state.deals,
       q = $("#deal-search").value.trim().toLowerCase(),
       status = $("#deal-filter").value,
@@ -893,27 +979,34 @@ export function initExperience(h) {
           heading,
           n(
             "span",
-            v.expired?x("Срок истёк","Expired"):t(v.status),
+            v.expired ? x(...pair("inline", "t862eb27f8504")) : t(v.status),
             "v-tag " + (v.status === "completed" ? "good" : "warn"),
           ),
         );
         copy.append(top);
-        const person = n("p"),verifiedName=n("span",t("player"));
-        verifiedName.dataset.mcName=peer;
-        person.append(verifiedName,n("span"," · "+fmtDate(v.createdAt)));
-        peerName(peer).then(nick=>verifiedName.textContent=nick);
-        copy.append(person,playerStatus(peer));
+        const person = n("p"),
+          verifiedName = n("span", t("player"));
+        verifiedName.dataset.mcName = peer;
+        person.append(verifiedName, n("span", " · " + fmtDate(v.createdAt)));
+        peerName(peer).then((nick) => (verifiedName.textContent = nick));
+        copy.append(person, playerStatus(peer));
         const price = n("p", undefined, "v-deal-total");
         price.append(money(v.total));
         copy.append(
           price,
-          n("p", v.quantity + x(" шт. × ", " items × ") + v.unitPrice + " ◆"),
           n(
             "p",
-            x(
-              `Подтверждено: покупатель ${v.buyerConfirmed ? "✓" : "-"} / продавец ${v.sellerConfirmed ? "✓" : "-"}`,
-              `Confirmed: buyer ${v.buyerConfirmed ? "✓" : "-"} / seller ${v.sellerConfirmed ? "✓" : "-"}`,
-            ),
+            v.quantity +
+              x(...pair("inline", "t36bb24c7ec99")) +
+              v.unitPrice +
+              " ◆",
+          ),
+          n(
+            "p",
+            message("dynamic", "m9023f2b50649", {
+              v0: v.buyerConfirmed ? "✓" : "-",
+              v1: v.sellerConfirmed ? "✓" : "-",
+            }),
           ),
         );
         if (v.status !== "cancelled") {
@@ -935,18 +1028,17 @@ export function initExperience(h) {
           }
           copy.append(progress);
         }
-        if(['pending','accepted'].includes(v.status)){const timer=n('p',undefined,'trade-deadline');timer.dataset.tradeDeadline=deadline(v);copy.append(timer)}
+        if (["pending", "accepted"].includes(v.status)) {
+          const timer = n("p", undefined, "trade-deadline");
+          timer.dataset.tradeDeadline = deadline(v);
+          copy.append(timer);
+        }
         const actions = n("div", undefined, "p-actions");
         const action = (act, key, icon) => {
           const b = btn(key, icon, () => {
             if (
               act === "confirm" &&
-              !confirm(
-                x(
-                  "Подтвердить получение предметов и завершение обмена в Minecraft?",
-                  "Confirm the items have been exchanged in Minecraft?",
-                ),
-              )
+              !confirm(x(...pair("inline", "ta27670d0f1fa")))
             )
               return;
             run(b, $("#deals-status"), () => m.changeDeal(v.docId, act));
@@ -954,10 +1046,11 @@ export function initExperience(h) {
           b.dataset.dealAction = act;
           actions.append(b);
         };
-        if (v.status === "pending" && !me && Date.now()<deadline(v))
+        if (v.status === "pending" && !me && Date.now() < deadline(v))
           action("accept", "acceptAction", "check");
         if (
-          v.status === "accepted" && Date.now()<deadline(v) &&
+          v.status === "accepted" &&
+          Date.now() < deadline(v) &&
           !(me ? v.buyerConfirmed : v.sellerConfirmed)
         )
           action("confirm", "confirmAction", "check");
@@ -1035,7 +1128,7 @@ export function initExperience(h) {
           v.lastSenderId !== m.state.publicId &&
           prev !== v.lastMessageId
         )
-          ping(x("Новое сообщение", "New message"));
+          ping(x(...pair("inline", "td848461bee29")));
       }
       threadBefore = new Map(
         m.state.threads.map((v) => [v.docId, v.lastMessageId]),
@@ -1056,8 +1149,7 @@ export function initExperience(h) {
                 (meBuyer
                   ? v.sellerConfirmed && !prev.sellerConfirmed
                   : v.buyerConfirmed && !prev.buyerConfirmed)));
-        if (dealsPrimed && changed)
-          ping(x("Обновление сделки", "Trade update"));
+        if (dealsPrimed && changed) ping(x(...pair("inline", "t7738c862ed4f")));
       }
       dealBefore = new Map(m.state.deals.map((v) => [v.docId, { ...v }]));
       dealsPrimed = true;

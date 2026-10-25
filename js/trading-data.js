@@ -1,15 +1,185 @@
-import {enqueue} from './background-jobs.js';
-import {verifyOwn} from './minecraft-data.js';
-import * as m from './market.js';
-const fail=code=>Object.assign(new Error(code),{code});
-async function who(){const a=await m.sdk();if(!a.instance.currentUser||!m.state.publicId)throw fail('profile-required');return a}
-export const deadline=d=>(d.createdAt?.toMillis?.()||0)+48*60*60*1000;
-async function permitted(){const v=await verifyOwn();if(!v?.allowed)throw fail('minecraft-'+(v?.reason||'unavailable'))}
-export async function editLot(lot,values){await permitted();const a=await who(),{f,db}=a;await f.runTransaction(db,async tx=>{const ref=f.doc(db,'lots',lot.docId),s=await tx.get(ref);if(!s.exists()||s.data().id!==m.generation(lot))throw fail('listing-changed');const d=s.data();if(d.sellerId!==m.state.publicId)throw fail('permission-denied');if(d.visibility==='hidden')throw fail('listing-hidden');const price=Number(values.unitPrice),available=Number(values.availableQty);if(!Number.isSafeInteger(price)||price<1||price>1e9||!Number.isSafeInteger(available)||available<0||available+(d.reservedQty||0)+(d.soldQty||0)>1e6)throw fail('quantity-invalid');const quantity=available+(d.reservedQty||0)+(d.soldQty||0);if(quantity<1)throw fail('quantity-invalid');tx.update(ref,{unitPrice:price,availableQty:available,quantity,customName:values.customName.trim().slice(0,80),updatedAt:f.serverTimestamp()});enqueue(tx,a,'lot',lot.docId)});}
-export async function pauseLot(lot,paused){if(!paused)await permitted();const a=await who(),{f,db}=a;await f.runTransaction(db,async tx=>{const ref=f.doc(db,'lots',lot.docId),s=await tx.get(ref);if(!s.exists()||s.data().id!==m.generation(lot))throw fail('listing-changed');tx.update(ref,{salePaused:paused,updatedAt:f.serverTimestamp()});enqueue(tx,a,'lot',lot.docId)})}
-export async function bumpLot(lot){await permitted();const {f,db}=await who();await f.runTransaction(db,async tx=>{const ref=f.doc(db,'lots',lot.docId),s=await tx.get(ref);if(!s.exists()||s.data().id!==m.generation(lot))throw fail('listing-changed');const d=s.data();if(d.bumpedAt&&Date.now()-d.bumpedAt.toMillis()<86400000)throw fail('bump-cooldown');tx.update(ref,{createdAt:f.serverTimestamp(),bumpedAt:f.serverTimestamp(),publishedAt:d.publishedAt||d.createdAt,updatedAt:f.serverTimestamp()})})}
-export async function saveSubscription(itemKey,maxPrice){const {f,db,instance}=await who();maxPrice=Number(maxPrice);if(!Number.isSafeInteger(maxPrice)||maxPrice<2||maxPrice>1e9)throw fail('price-invalid');await f.setDoc(f.doc(db,'itemSubscriptions',instance.currentUser.uid+'_'+itemKey),{ownerUid:instance.currentUser.uid,itemKey,maxPrice,enabled:true,updatedAt:f.serverTimestamp()})}
-export async function removeSubscription(id){const {f,db}=await who();await f.deleteDoc(f.doc(db,'itemSubscriptions',id))}
-export async function watchPrivate(receive,error){const {f,db,instance}=await who();const uid=instance.currentUser.uid,stops=[];stops.push(f.onSnapshot(f.query(f.collection(db,'itemSubscriptions'),f.where('ownerUid','==',uid),f.limit(50)),s=>receive('subscriptions',s.docs.map(d=>({...d.data(),docId:d.id}))),error));stops.push(f.onSnapshot(f.query(f.collection(db,'users',uid,'alerts'),f.orderBy('createdAt','desc'),f.limit(50)),s=>receive('alerts',s.docs.map(d=>({...d.data(),docId:d.id}))),error));return()=>stops.forEach(s=>s())}
-export async function readAlert(id){const {f,db,instance}=await who();await f.updateDoc(f.doc(db,'users',instance.currentUser.uid,'alerts',id),{read:true})}
-export async function watchPublic(col,id,receive,error){const {f,db}=await m.sdk();return f.onSnapshot(f.doc(db,col,id),s=>receive(s.exists()?s.data():null),error)}
+import { enqueue } from "./background-jobs.js";
+import { verifyOwn } from "./minecraft-data.js";
+import * as m from "./market.js";
+const fail = (code) => Object.assign(new Error(code), { code });
+async function who() {
+  const a = await m.sdk();
+  if (!a.instance.currentUser || !m.state.publicId)
+    throw fail("profile-required");
+  return a;
+}
+export const deadline = (d) =>
+  (d.createdAt?.toMillis?.() || 0) + 48 * 60 * 60 * 1000;
+async function permitted() {
+  const v = await verifyOwn();
+  if (!v?.allowed) throw fail("minecraft-" + (v?.reason || "unavailable"));
+}
+export async function editLot(lot, values) {
+  await permitted();
+  const a = await who(),
+    { f, db } = a;
+  await f.runTransaction(db, async (tx) => {
+    const ref = f.doc(db, "lots", lot.docId),
+      s = await tx.get(ref);
+    if (!s.exists() || s.data().id !== m.generation(lot))
+      throw fail("listing-changed");
+    const d = s.data();
+    if (d.sellerId !== m.state.publicId) throw fail("permission-denied");
+    if (d.visibility === "hidden") throw fail("listing-hidden");
+    const price = Number(values.unitPrice),
+      available = Number(values.availableQty);
+    if (
+      !Number.isSafeInteger(price) ||
+      price < 1 ||
+      price > 1e9 ||
+      !Number.isSafeInteger(available) ||
+      available < 0 ||
+      available + (d.reservedQty || 0) + (d.soldQty || 0) > 1e6
+    )
+      throw fail("quantity-invalid");
+    const quantity = available + (d.reservedQty || 0) + (d.soldQty || 0);
+    if (quantity < 1) throw fail("quantity-invalid");
+    let priceChange = {};
+    if (price !== d.unitPrice) {
+      const change = crypto.randomUUID();
+      tx.create
+        ? tx.create(
+            f.doc(
+              db,
+              "lotPriceHistory",
+              lot.docId,
+              "versions",
+              d.id,
+              "entries",
+              change,
+            ),
+            { from: d.unitPrice, to: price, at: f.serverTimestamp() },
+          )
+        : tx.set(
+            f.doc(
+              db,
+              "lotPriceHistory",
+              lot.docId,
+              "versions",
+              d.id,
+              "entries",
+              change,
+            ),
+            { from: d.unitPrice, to: price, at: f.serverTimestamp() },
+          );
+      priceChange = { priceChangeId: change };
+    }
+    tx.update(ref, {
+      ...priceChange,
+      unitPrice: price,
+      availableQty: available,
+      quantity,
+      customName: values.customName.trim().slice(0, 80),
+      updatedAt: f.serverTimestamp(),
+    });
+    enqueue(tx, a, "lot", lot.docId);
+  });
+}
+export async function pauseLot(lot, paused) {
+  if (!paused) await permitted();
+  const a = await who(),
+    { f, db } = a;
+  await f.runTransaction(db, async (tx) => {
+    const ref = f.doc(db, "lots", lot.docId),
+      s = await tx.get(ref);
+    if (!s.exists() || s.data().id !== m.generation(lot))
+      throw fail("listing-changed");
+    tx.update(ref, { salePaused: paused, updatedAt: f.serverTimestamp() });
+    enqueue(tx, a, "lot", lot.docId);
+  });
+}
+export async function bumpLot(lot) {
+  await permitted();
+  const { f, db } = await who();
+  await f.runTransaction(db, async (tx) => {
+    const ref = f.doc(db, "lots", lot.docId),
+      s = await tx.get(ref);
+    if (!s.exists() || s.data().id !== m.generation(lot))
+      throw fail("listing-changed");
+    const d = s.data();
+    if (d.bumpedAt && Date.now() - d.bumpedAt.toMillis() < 86400000)
+      throw fail("bump-cooldown");
+    tx.update(ref, {
+      createdAt: f.serverTimestamp(),
+      bumpedAt: f.serverTimestamp(),
+      publishedAt: d.publishedAt || d.createdAt,
+      updatedAt: f.serverTimestamp(),
+    });
+  });
+}
+export async function saveSubscription(itemKey, maxPrice) {
+  const { f, db, instance } = await who();
+  maxPrice = Number(maxPrice);
+  if (!Number.isSafeInteger(maxPrice) || maxPrice < 2 || maxPrice > 1e9)
+    throw fail("price-invalid");
+  await f.setDoc(
+    f.doc(db, "itemSubscriptions", instance.currentUser.uid + "_" + itemKey),
+    {
+      ownerUid: instance.currentUser.uid,
+      itemKey,
+      maxPrice,
+      enabled: true,
+      updatedAt: f.serverTimestamp(),
+    },
+  );
+}
+export async function removeSubscription(id) {
+  const { f, db } = await who();
+  await f.deleteDoc(f.doc(db, "itemSubscriptions", id));
+}
+export async function watchPrivate(receive, error) {
+  const { f, db, instance } = await who();
+  const uid = instance.currentUser.uid,
+    stops = [];
+  stops.push(
+    f.onSnapshot(
+      f.query(
+        f.collection(db, "itemSubscriptions"),
+        f.where("ownerUid", "==", uid),
+        f.limit(50),
+      ),
+      (s) =>
+        receive(
+          "subscriptions",
+          s.docs.map((d) => ({ ...d.data(), docId: d.id })),
+        ),
+      error,
+    ),
+  );
+  stops.push(
+    f.onSnapshot(
+      f.query(
+        f.collection(db, "users", uid, "alerts"),
+        f.orderBy("createdAt", "desc"),
+        f.limit(50),
+      ),
+      (s) =>
+        receive(
+          "alerts",
+          s.docs.map((d) => ({ ...d.data(), docId: d.id })),
+        ),
+      error,
+    ),
+  );
+  return () => stops.forEach((s) => s());
+}
+export async function readAlert(id) {
+  const { f, db, instance } = await who();
+  await f.updateDoc(
+    f.doc(db, "users", instance.currentUser.uid, "alerts", id),
+    { read: true },
+  );
+}
+export async function watchPublic(col, id, receive, error) {
+  const { f, db } = await m.sdk();
+  return f.onSnapshot(
+    f.doc(db, col, id),
+    (s) => receive(s.exists() ? s.data() : null),
+    error,
+  );
+}

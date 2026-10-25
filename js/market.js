@@ -1,53 +1,883 @@
-import {enqueue} from './background-jobs.js';
-import {verifyOwn,ensureTrade} from './minecraft-data.js';
-import {getFirebaseSession} from './discord-auth.js';
-export const state={rows:[],profile:null,publicId:null,user:null,favorites:[],threads:[],deals:[],reads:new Map(),ownLots:[],soundEnabled:true,threadsReady:false,dealsReady:false,catalogFromCache:false,status:'loading',error:null,privateError:null,minecraftAccess:null,more:false};
-let sdkPromise,cursor=null,epoch=0,stops=[],busy=false;const profileCache=new Map(),lotCache=new Map(),photoCache=new Map();
-export const changed=()=>window.dispatchEvent(new Event('zeno-data'));
-const fail=code=>Object.assign(new Error(code),{code});
-export const codeOf=e=>typeof e?.code==='string'&&/^[a-z0-9/-]{1,100}$/.test(e.code)?e.code:'unavailable';
-export async function sdk(){if(!sdkPromise)sdkPromise=(async()=>{const a=await getFirebaseSession(),f=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');return {...a,f,db:f.getFirestore(a.firebaseApp)}})().catch(e=>{sdkPromise=null;throw e});return sdkPromise}
-const lotRow=d=>({...d.data(),docId:d.id,cloud:true,id:d.id+':'+d.data().id,available:d.data().availableQty??d.data().quantity});
-export const favoriteId=l=>'l_'+l.docId+'_'+l.id.split(':').at(-1);
-export const generation=l=>l.generationId||l.id.split(':').at(-1);
-export const owns=l=>state.publicId&&l.sellerId===state.publicId;
-function requireProfile(a){if(!a.instance.currentUser)throw fail('auth/sign-in-required');if(!state.publicId||!state.profile||state.user?.uid!==a.instance.currentUser.uid)throw fail('profile-required');return state.publicId}
-function remember(l){lotCache.set(l.id,l);return l}
-let stopCatalog=null,catalogLimit=100,catalogVersion=0;
-export async function loadCatalog(more=false){if(busy)return;busy=true;const v=++catalogVersion;catalogLimit=more?Math.min(500,catalogLimit+100):100;state.status='loading';state.error=null;changed();stopCatalog?.();try{const {f,db}=await sdk();if(v!==catalogVersion)return;await new Promise(resolve=>{stopCatalog=f.onSnapshot(f.query(f.collection(db,'lots'),f.orderBy('createdAt','desc'),f.limit(catalogLimit)),{includeMetadataChanges:true},snap=>{if(v!==catalogVersion)return;state.rows=snap.docs.map(lotRow).map(remember);state.more=snap.size===catalogLimit&&catalogLimit<500;state.status='ready';state.catalogFromCache=snap.metadata.fromCache;state.error=null;busy=false;changed();resolve()},e=>{if(v!==catalogVersion)return;state.status='error';state.error=codeOf(e);busy=false;changed();resolve()})})}catch(e){state.status='error';state.error=codeOf(e)}finally{if(v===catalogVersion){busy=false;changed()}}}
-export function lookup(id){return lotCache.get(id)}
-export async function fetchLot(docId,gen){const {f,db}=await sdk(),d=await f.getDocFromServer(f.doc(db,'lots',docId));if(!d.exists())return null;const l=lotRow(d);if(gen&&generation(l)!==gen)return null;return remember(l)}
-export async function publicProfile(id,fresh=false){if(!fresh&&profileCache.has(id))return profileCache.get(id);const {f,db}=await sdk(),d=await f.getDocFromServer(f.doc(db,'publicProfiles',id));const p=d.exists()?d.data():null;profileCache.set(id,p);return p}
-export async function sellerLots(id){const {f,db}=await sdk(),d=await f.getDocsFromServer(f.query(f.collection(db,'lots'),f.where('sellerId','==',id),f.limit(50)));return d.docs.map(lotRow).map(remember)}
-function watch(a,col,queryParts,apply,version){const {f,db}=a;stops.push(f.onSnapshot(f.query(f.collection(db,...col),...queryParts),snap=>{if(version!==epoch)return;apply(snap.docs.map(d=>({...d.data(),docId:d.id})));changed()},e=>{if(version===epoch){state.privateError=codeOf(e);changed()}}))}
-export async function loadUser(){const version=++epoch;stops.forEach(stop=>stop());stops=[];Object.assign(state,{user:null,profile:null,publicId:null,favorites:[],threads:[],deals:[],privateError:null,reads:new Map(),ownLots:[],soundEnabled:true,threadsReady:false,dealsReady:false,minecraftAccess:null});changed();try{const a=await sdk(),u=a.instance.currentUser;if(version!==epoch)return;if(!u)return;state.user=u;changed();try{const access=await verifyOwn();if(version!==epoch)return;state.minecraftAccess=access}catch{if(version!==epoch)return;state.minecraftAccess={allowed:false,reason:'unavailable'}}const m=await a.f.getDocFromServer(a.f.doc(a.db,'users',u.uid));if(version!==epoch)return;if(!m.exists())return;const publicId=m.data().publicId,profile=await publicProfile(publicId,true);if(version!==epoch)return;state.publicId=publicId;state.profile=profile;const {f}=a,base=['users',u.uid];
- watch(a,[...base,'favorites'],[f.orderBy('createdAt','desc'),f.limit(100)],rows=>state.favorites=rows,version);
- watch(a,['threads'],[f.where('members','array-contains',state.publicId),f.limit(100)],rows=>{state.threadsReady=true;state.threads=rows.sort((a,b)=>(b.updatedAt?.toMillis?.()||0)-(a.updatedAt?.toMillis?.()||0))},version);
- watch(a,['deals'],[f.where('members','array-contains',state.publicId),f.limit(100)],rows=>{state.dealsReady=true;state.deals=rows.sort((a,b)=>(b.updatedAt?.toMillis?.()||0)-(a.updatedAt?.toMillis?.()||0))},version);
- watch(a,[...base,'reads'],[f.limit(200)],rows=>state.reads=new Map(rows.map(x=>[x.docId,x.seenAt?.toMillis?.()||0])),version);
- watch(a,['lots'],[f.where('sellerId','==',state.publicId),f.limit(50)],rows=>state.ownLots=rows,version);
- stops.push(f.onSnapshot(f.doc(a.db,...base,'preferences','ui'),d=>{if(version===epoch){state.soundEnabled=d.exists()?d.data().soundEnabled:true;changed()}},e=>{if(version===epoch){state.privateError=codeOf(e);changed()}}));
- }catch(e){if(version===epoch)state.privateError=codeOf(e)}finally{if(version===epoch)changed()}}
-export async function saveProfile(){await verifyOwn();profileCache.clear();await loadUser()}
-export async function publishLot(v,photo){const access=await verifyOwn();if(!access?.allowed)throw fail('minecraft-'+(access?.reason||'unavailable'));await loadUser();const a=await sdk(),sellerId=requireProfile(a),{f,db}=a;const all=await sellerLots(sellerId),occupied=new Set(all.map(x=>x.slot));let slot=0;while(occupied.has(slot))slot++;if(slot>=50)throw fail('listing-limit');if(requireProfile(a)!==sellerId)throw fail('auth/user-changed');const id=crypto.randomUUID(),path=sellerId+'_'+slot,stamp=f.serverTimestamp(),data={id,sellerId,slot,itemKey:v.itemKey,nickname:state.profile.minecraftName,quantity:v.quantity,unitPrice:v.unitPrice,customName:v.customName||'',traitData:v.traitData||'{}',createdAt:stamp,updatedAt:stamp,availableQty:v.quantity,reservedQty:0,soldQty:0,lastOperationId:'',lastOperation:'',hasPhoto:!!photo};const b=f.writeBatch(db);b.set(f.doc(db,'lots',path),data);if(photo)b.set(f.doc(db,'lotPhotos',path),{sellerId,generationId:id,data:photo,createdAt:stamp});enqueue(b,a,'lot',path);await b.commit();await loadCatalog();return path}
-export async function deleteLot(lot){const a=await sdk();requireProfile(a);await a.f.runTransaction(a.db,async tx=>{const ref=a.f.doc(a.db,'lots',lot.docId),snap=await tx.get(ref);if(!snap.exists())return;const d=snap.data();if(d.id!==generation(lot))throw fail('listing-changed');if(d.sellerId!==state.publicId)throw fail('permission-denied');if((d.reservedQty||0)>0)throw fail('listing-reserved');if(d.hasPhoto)tx.delete(a.f.doc(a.db,'lotPhotos',lot.docId));tx.delete(ref)});lotCache.delete(lot.id);photoCache.delete(lot.id);await loadCatalog()}
-export async function loadPhoto(lot){if(!lot.hasPhoto)return null;if(!photoCache.has(lot.id))photoCache.set(lot.id,(async()=>{const {f,db}=await sdk(),d=await f.getDocFromServer(f.doc(db,'lotPhotos',lot.docId));return d.exists()&&d.data().generationId===generation(lot)&&/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(d.data().data)?d.data().data:null})().catch(e=>{photoCache.delete(lot.id);throw e}));return photoCache.get(lot.id)}
-export async function preparePhoto(file){if(!file)return null;if(file.size>5*1024*1024)throw fail('photo-too-large');if(!['image/png','image/jpeg','image/webp'].includes(file.type))throw fail('photo-type');const url=URL.createObjectURL(file);try{const img=new Image();img.src=url;await img.decode();if(!img.naturalWidth||!img.naturalHeight||img.naturalWidth*img.naturalHeight>24000000)throw fail('photo-dimensions');let side=1280;for(let attempt=0;attempt<5;attempt++){const ratio=Math.min(1,side/Math.max(img.naturalWidth,img.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);for(const quality of [.8,.65,.5]){const data=canvas.toDataURL('image/webp',quality);if(data.startsWith('data:image/webp;base64,')&&data.length<=245760)return data}side=Math.round(side*.75)}throw fail('photo-compression')}finally{URL.revokeObjectURL(url)}}
-export async function toggleFavorite(lot,kind='lot'){const a=await sdk(),id=requireProfile(a),{f,db}=a,key=kind==='seller'?'s_'+lot.sellerId:favoriteId(lot),ref=f.doc(db,'users',state.user.uid,'favorites',key);if(state.favorites.some(x=>x.docId===key)){await f.deleteDoc(ref);return}if(state.favorites.length>=100)throw fail('favorite-limit');await f.setDoc(ref,{kind,sellerId:lot.sellerId,lotDoc:kind==='lot'?lot.docId:'',generationId:kind==='lot'?generation(lot):'',createdAt:f.serverTimestamp()})}
-export async function saveDraft(v){const a=await sdk();requireProfile(a);await a.f.setDoc(a.f.doc(a.db,'users',state.user.uid,'drafts','current'),{...v,updatedAt:a.f.serverTimestamp()})}
-export async function getDraft(){const a=await sdk();requireProfile(a);const d=await a.f.getDocFromServer(a.f.doc(a.db,'users',state.user.uid,'drafts','current'));return d.exists()?d.data():null}
-export async function markRead(kind,id){const a=await sdk();requireProfile(a);await a.f.setDoc(a.f.doc(a.db,'users',state.user.uid,'reads',kind+'_'+id),{seenAt:a.f.serverTimestamp()})}
-export const unread=(kind,x)=>x.lastSenderId!==state.publicId&&(x.updatedAt?.toMillis?.()||0)>(state.reads.get(kind+'_'+x.docId)||0);
-export async function startThread(lot){const a=await sdk(),buyerId=requireProfile(a),{f,db}=a;if(buyerId===lot.sellerId)throw fail('own-listing');const id=lot.docId+'~'+generation(lot)+'~'+buyerId,ref=f.doc(db,'threads',id),old=await f.getDocFromServer(ref);if(!old.exists()){const stamp=f.serverTimestamp();try{await f.setDoc(ref,{sellerId:lot.sellerId,buyerId,members:[lot.sellerId,buyerId],lotDoc:lot.docId,lotGenerationId:generation(lot),itemKey:lot.itemKey,title:lot.customName||'',createdAt:stamp,updatedAt:stamp,lastMessageId:'',lastSenderId:''})}catch(e){const again=await f.getDocFromServer(ref);if(!again.exists())throw e}}return id}
-export async function listenMessages(id,receive,error){const {f,db}=await sdk();return f.onSnapshot(f.query(f.collection(db,'threads',id,'messages'),f.orderBy('createdAt','desc'),f.limit(50)),s=>receive(s.docs.map(d=>({...d.data(),docId:d.id})).reverse(),s.docs.at(-1)),e=>error(codeOf(e)))}
-export async function olderMessages(id,cursor){if(!cursor)return {rows:[],cursor:null};const {f,db}=await sdk(),s=await f.getDocsFromServer(f.query(f.collection(db,'threads',id,'messages'),f.orderBy('createdAt','desc'),f.startAfter(cursor),f.limit(50)));return {rows:s.docs.map(d=>({...d.data(),docId:d.id})).reverse(),cursor:s.docs.at(-1)||null}}
-export async function sendMessage(id,body,replyTo=''){body=body.trim();if(!body||body.length>2000)throw fail('message-invalid');const a=await sdk(),senderId=requireProfile(a),{f,db}=a,msgId=crypto.randomUUID(),stamp=f.serverTimestamp(),b=f.writeBatch(db);b.set(f.doc(db,'threads',id,'messages',msgId),{senderId,body,createdAt:stamp,...(replyTo?{replyTo}:{})});b.update(f.doc(db,'threads',id),{lastMessageId:msgId,lastSenderId:senderId,updatedAt:stamp});await b.commit()}
-function stock(d){return {availableQty:d.availableQty??d.quantity,reservedQty:d.reservedQty??0,soldQty:d.soldQty??0}}
-export async function createDeal(lot,quantity){await ensureTrade({lotDoc:lot.docId});if(!Number.isSafeInteger(quantity)||quantity<1)throw fail('quantity-invalid');const a=await sdk(),buyerId=requireProfile(a),{f,db}=a,id=crypto.randomUUID();try{await f.runTransaction(db,async tx=>{const ref=f.doc(db,'lots',lot.docId),snap=await tx.get(ref);if(!snap.exists())throw fail('listing-unavailable');const d=snap.data(),s=stock(d);if(d.id!==generation(lot))throw fail('listing-changed');if(d.salePaused)throw fail('listing-paused');if(d.unitPrice!==lot.unitPrice)throw fail('price-changed');if(d.sellerId===buyerId)throw fail('own-listing');if(s.availableQty<quantity)throw fail('quantity-unavailable');const stamp=f.serverTimestamp();tx.set(f.doc(db,'deals',id),{sellerId:d.sellerId,buyerId,members:[d.sellerId,buyerId],lotDoc:lot.docId,lotGenerationId:d.id,itemKey:d.itemKey,title:d.customName,quantity,unitPrice:d.unitPrice,total:quantity*d.unitPrice,status:'pending',buyerConfirmed:false,sellerConfirmed:false,cancelledBy:'',createdAt:stamp,updatedAt:stamp});tx.update(ref,{...s,availableQty:s.availableQty-quantity,reservedQty:s.reservedQty+quantity,lastOperationId:id,lastOperation:'reserve',updatedAt:stamp})})}catch(e){if(['permission-denied','aborted'].includes(codeOf(e))){const live=await f.getDocFromServer(f.doc(db,'lots',lot.docId));if(live.exists()&&live.data().id===generation(lot)&&stock(live.data()).availableQty<quantity)throw fail('quantity-unavailable')}throw e}await markRead('deal',id).catch(()=>{});await loadCatalog();return id}
-export async function changeDeal(id,action){if(action!=='cancel')await ensureTrade({dealId:id});const a=await sdk(),me=requireProfile(a),{f,db}=a;await f.runTransaction(db,async tx=>{const ref=f.doc(db,'deals',id),snap=await tx.get(ref);if(!snap.exists())throw fail('deal-unavailable');const d=snap.data();if(!d.members.includes(me))throw fail('permission-denied');if(['accept','confirm'].includes(action)&&Date.now()>=(d.createdAt?.toMillis?.()||0)+172800000)throw fail('deal-expired');const patch={updatedAt:f.serverTimestamp()};let op=null;
- if(action==='accept'&&me===d.sellerId&&d.status==='pending')patch.status='accepted';
- else if(action==='cancel'&&['pending','accepted'].includes(d.status)){patch.status='cancelled';patch.cancelledBy=me;op='release'}
- else if(action==='confirm'&&d.status==='accepted'){const key=me===d.buyerId?'buyerConfirmed':'sellerConfirmed';if(d[key])throw fail('already-confirmed');patch[key]=true;if((key==='buyerConfirmed'||d.buyerConfirmed)&&(key==='sellerConfirmed'||d.sellerConfirmed)){patch.status='completed';op='complete'}}
- else throw fail('deal-state-changed');
- if(op){const lotRef=f.doc(db,'lots',d.lotDoc),ls=await tx.get(lotRef);if(!ls.exists()||ls.data().id!==d.lotGenerationId)throw fail('listing-changed');const s=stock(ls.data());if(s.reservedQty<d.quantity)throw fail('quantity-unavailable');tx.update(lotRef,{...s,reservedQty:s.reservedQty-d.quantity,availableQty:s.availableQty+(op==='release'?d.quantity:0),soldQty:s.soldQty+(op==='complete'?d.quantity:0),lastOperationId:id,lastOperation:op,updatedAt:patch.updatedAt})}tx.update(ref,patch);if(op==='complete')enqueue(tx,a,'trade',id)});await markRead('deal',id).catch(()=>{});await loadCatalog()}
-export async function initMarket(){window.addEventListener('zeno-auth-change',loadUser);loadCatalog();loadUser()}
+import { readCatalog, saveCatalog } from "./catalog-cache.js";
+import { enqueue } from "./background-jobs.js";
+import {
+  verifyOwn,
+  ensureTrade,
+  proofResult,
+  proofUsable,
+  rememberAccess,
+} from "./minecraft-data.js";
+import { getFirebaseSession } from "./discord-auth.js";
+export const state = {
+  rows: [],
+  profile: null,
+  publicId: null,
+  user: null,
+  favorites: [],
+  threads: [],
+  deals: [],
+  reads: new Map(),
+  ownLots: [],
+  soundEnabled: true,
+  threadsReady: false,
+  dealsReady: false,
+  catalogFromCache: false,
+  status: "loading",
+  error: null,
+  privateError: null,
+  minecraftAccess: null,
+  more: false,
+};
+let sdkPromise,
+  cursor = null,
+  epoch = 0,
+  stops = [],
+  busy = false;
+const profileCache = new Map(),
+  profileTimes = new Map(),
+  profileInflight = new Map(),
+  lotCache = new Map(),
+  photoCache = new Map();
+export const changed = () => window.dispatchEvent(new Event("zeno-data"));
+const fail = (code) => Object.assign(new Error(code), { code });
+export const codeOf = (e) =>
+  typeof e?.code === "string" && /^[a-z0-9/-]{1,100}$/.test(e.code)
+    ? e.code
+    : "unavailable";
+export async function sdk() {
+  if (!sdkPromise)
+    sdkPromise = (async () => {
+      const a = await getFirebaseSession(),
+        f =
+          await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
+      return { ...a, f, db: f.getFirestore(a.firebaseApp) };
+    })().catch((e) => {
+      sdkPromise = null;
+      throw e;
+    });
+  return sdkPromise;
+}
+const lotRow = (d) => ({
+  ...d.data(),
+  docId: d.id,
+  cloud: true,
+  id: d.id + ":" + d.data().id,
+  available: d.data().availableQty ?? d.data().quantity,
+});
+export const favoriteId = (l) => "l_" + l.docId + "_" + l.id.split(":").at(-1);
+export const generation = (l) => l.generationId || l.id.split(":").at(-1);
+export const owns = (l) => state.publicId && l.sellerId === state.publicId;
+function requireProfile(a) {
+  if (!a.instance.currentUser) throw fail("auth/sign-in-required");
+  if (
+    !state.publicId ||
+    !state.profile ||
+    state.user?.uid !== a.instance.currentUser.uid
+  )
+    throw fail("profile-required");
+  return state.publicId;
+}
+function remember(l) {
+  lotCache.delete(l.id);
+  lotCache.set(l.id, l);
+  if (lotCache.size > 1000) lotCache.delete(lotCache.keys().next().value);
+  return l;
+}
+let stopCatalog = null,
+  catalogLimit = 100,
+  catalogVersion = 0;
+export async function loadCatalog(more = false) {
+  if (busy) return;
+  busy = true;
+  const v = ++catalogVersion;
+  catalogLimit = more ? Math.min(500, catalogLimit + 100) : 100;
+  state.status = "loading";
+  state.error = null;
+  changed();
+  stopCatalog?.();
+  if (!state.rows.length) {
+    const stored = await readCatalog();
+    if (v !== catalogVersion) return;
+    if (stored) {
+      state.rows = stored.rows.map(remember);
+      state.catalogFromCache = true;
+      state.cacheSavedAt = stored.savedAt;
+      state.status = "ready";
+      changed();
+    }
+  }
+  if (navigator.onLine === false && state.rows.length) {
+    busy = false;
+    state.status = "ready";
+    state.catalogFromCache = true;
+    changed();
+    return;
+  }
+  try {
+    const { f, db } = await sdk();
+    if (v !== catalogVersion) return;
+    await new Promise((resolve) => {
+      stopCatalog = f.onSnapshot(
+        f.query(
+          f.collection(db, "lots"),
+          f.orderBy("createdAt", "desc"),
+          f.limit(catalogLimit),
+        ),
+        { includeMetadataChanges: true },
+        (snap) => {
+          if (v !== catalogVersion) return;
+          state.rows = snap.docs.map(lotRow).map(remember);
+          if (!snap.metadata.fromCache) saveCatalog(state.rows);
+          state.more = snap.size === catalogLimit && catalogLimit < 500;
+          state.status = "ready";
+          state.catalogFromCache = snap.metadata.fromCache;
+          state.error = null;
+          busy = false;
+          changed();
+          resolve();
+        },
+        (e) => {
+          if (v !== catalogVersion) return;
+          state.status = state.rows.length ? "ready" : "error";
+          state.catalogFromCache = state.rows.length > 0;
+          state.error = codeOf(e);
+          busy = false;
+          changed();
+          resolve();
+        },
+      );
+    });
+  } catch (e) {
+    state.status = "error";
+    state.error = codeOf(e);
+  } finally {
+    if (v === catalogVersion) {
+      busy = false;
+      changed();
+    }
+  }
+}
+export function lookup(id) {
+  return lotCache.get(id);
+}
+export async function fetchLot(docId, gen) {
+  const { f, db } = await sdk(),
+    d = await f.getDocFromServer(f.doc(db, "lots", docId));
+  if (!d.exists()) return null;
+  const l = lotRow(d);
+  if (gen && generation(l) !== gen) return null;
+  return remember(l);
+}
+export async function publicProfile(id, fresh = false) {
+  if (
+    !fresh &&
+    profileCache.has(id) &&
+    Date.now() - (profileTimes.get(id) || 0) < 180000
+  )
+    return profileCache.get(id);
+  if (profileInflight.has(id)) return profileInflight.get(id);
+  const request = (async () => {
+    try {
+      const { f, db } = await sdk(),
+        d = await f.getDocFromServer(f.doc(db, "publicProfiles", id)),
+        p = d.exists() ? d.data() : null;
+      profileCache.set(id, p);
+      profileTimes.set(id, Date.now());
+      while (profileCache.size > 300) {
+        const oldest = profileCache.keys().next().value;
+        profileCache.delete(oldest);
+        profileTimes.delete(oldest);
+      }
+      return p;
+    } finally {
+      profileInflight.delete(id);
+    }
+  })();
+  profileInflight.set(id, request);
+  return request;
+}
+export async function sellerLots(id) {
+  const { f, db } = await sdk(),
+    d = await f.getDocsFromServer(
+      f.query(
+        f.collection(db, "lots"),
+        f.where("sellerId", "==", id),
+        f.limit(50),
+      ),
+    );
+  return d.docs.map(lotRow).map(remember);
+}
+function watch(a, col, queryParts, apply, version) {
+  const { f, db } = a;
+  stops.push(
+    f.onSnapshot(
+      f.query(f.collection(db, ...col), ...queryParts),
+      (snap) => {
+        if (version !== epoch) return;
+        apply(snap.docs.map((d) => ({ ...d.data(), docId: d.id })));
+        changed();
+      },
+      (e) => {
+        if (version === epoch) {
+          state.privateError = codeOf(e);
+          changed();
+        }
+      },
+    ),
+  );
+}
+export async function loadUser(options = {}) {
+  const version = ++epoch;
+  stops.forEach((stop) => stop());
+  stops = [];
+  Object.assign(state, {
+    user: null,
+    profile: null,
+    publicId: null,
+    favorites: [],
+    threads: [],
+    deals: [],
+    privateError: null,
+    reads: new Map(),
+    ownLots: [],
+    soundEnabled: true,
+    threadsReady: false,
+    dealsReady: false,
+    minecraftAccess: null,
+    accountLoading: true,
+  });
+  changed();
+  try {
+    const a = await sdk(),
+      u = a.instance.currentUser;
+    if (version !== epoch) return;
+    if (!u) return;
+    state.user = u;
+    changed();
+    let own = await a.f.getDocFromServer(a.f.doc(a.db, "users", u.uid));
+    if (version !== epoch) return;
+    let access = options.verifiedUid === u.uid ? options.verifiedAccess : null;
+    if (!access && own.exists()) {
+      const id = own.data().publicId;
+      if (/^[A-Za-z0-9]{20}$/.test(id)) {
+        const proof = await a.f.getDocFromServer(
+          a.f.doc(a.db, "tradeAccess", id),
+        );
+        if (proof.exists()) access = proofResult(proof.data(), id);
+      }
+    }
+    if (!access || (!proofUsable(access) && access.reason === "ok")) {
+      try {
+        access = await verifyOwn();
+      } catch {
+        access = { allowed: false, reason: "unavailable" };
+      }
+      if (!own.exists())
+        own = await a.f.getDocFromServer(a.f.doc(a.db, "users", u.uid));
+    }
+    if (version !== epoch) return;
+    state.minecraftAccess = access;
+    rememberAccess(u.uid, access);
+    const m = own;
+    if (!m.exists()) return;
+    const publicId = m.data().publicId,
+      profile = await publicProfile(publicId, true);
+    if (version !== epoch) return;
+    state.publicId = publicId;
+    state.profile = profile;
+    const { f } = a,
+      base = ["users", u.uid];
+    stops.push(
+      f.onSnapshot(
+        f.doc(a.db, "tradeAccess", publicId),
+        (d) => {
+          if (version !== epoch) return;
+          const value = d.exists() ? proofResult(d.data(), publicId) : null;
+          rememberAccess(u.uid, value);
+          state.minecraftAccess = value || {
+            allowed: false,
+            reason: "unavailable",
+          };
+          changed();
+        },
+        () => {},
+      ),
+    );
+
+    watch(
+      a,
+      [...base, "favorites"],
+      [f.orderBy("createdAt", "desc"), f.limit(100)],
+      (rows) => (state.favorites = rows),
+      version,
+    );
+    watch(
+      a,
+      ["threads"],
+      [f.where("members", "array-contains", state.publicId), f.limit(100)],
+      (rows) => {
+        state.threadsReady = true;
+        state.threads = rows.sort(
+          (a, b) =>
+            (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0),
+        );
+      },
+      version,
+    );
+    watch(
+      a,
+      ["deals"],
+      [f.where("members", "array-contains", state.publicId), f.limit(100)],
+      (rows) => {
+        state.dealsReady = true;
+        state.deals = rows.sort(
+          (a, b) =>
+            (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0),
+        );
+      },
+      version,
+    );
+    watch(
+      a,
+      [...base, "reads"],
+      [f.limit(200)],
+      (rows) =>
+        (state.reads = new Map(
+          rows.map((x) => [x.docId, x.seenAt?.toMillis?.() || 0]),
+        )),
+      version,
+    );
+    watch(
+      a,
+      ["lots"],
+      [f.where("sellerId", "==", state.publicId), f.limit(50)],
+      (rows) => (state.ownLots = rows),
+      version,
+    );
+    stops.push(
+      f.onSnapshot(
+        f.doc(a.db, ...base, "preferences", "ui"),
+        (d) => {
+          if (version === epoch) {
+            state.soundEnabled = d.exists() ? d.data().soundEnabled : true;
+            changed();
+          }
+        },
+        (e) => {
+          if (version === epoch) {
+            state.privateError = codeOf(e);
+            changed();
+          }
+        },
+      ),
+    );
+  } catch (e) {
+    if (version === epoch) state.privateError = codeOf(e);
+  } finally {
+    if (version === epoch) {
+      state.accountLoading = false;
+      changed();
+    }
+  }
+}
+// Wait for the existing account restoration, without starting another read or verification.
+export async function accountReady() {
+  const a = await sdk();
+  if (!a.instance.currentUser || !state.accountLoading) return;
+  await new Promise((resolve, reject) => {
+    let timer;
+    const stop = () => {
+      window.removeEventListener("zeno-data", check);
+      clearTimeout(timer);
+    };
+    const check = () => {
+      if (!state.accountLoading) {
+        stop();
+        resolve();
+      }
+    };
+    window.addEventListener("zeno-data", check);
+    timer = setTimeout(() => {
+      stop();
+      reject(fail("unavailable"));
+    }, 8000);
+    check();
+  });
+}
+export async function saveProfile() {
+  const a = await sdk(),
+    uid = a.instance.currentUser?.uid,
+    access = await verifyOwn({ force: true });
+  if (a.instance.currentUser?.uid !== uid) throw fail("auth/user-changed");
+  profileCache.clear();
+  profileTimes.clear();
+  await loadUser({ verifiedUid: uid, verifiedAccess: access });
+}
+export async function publishLot(v, photo) {
+  const session = await sdk(),
+    verifiedUid = session.instance.currentUser?.uid,
+    access = await verifyOwn();
+  if (session.instance.currentUser?.uid !== verifiedUid)
+    throw fail("auth/user-changed");
+  if (!access?.allowed)
+    throw fail("minecraft-" + (access?.reason || "unavailable"));
+  await loadUser({ verifiedUid, verifiedAccess: access });
+  const a = await sdk(),
+    sellerId = requireProfile(a),
+    { f, db } = a;
+  const all = await sellerLots(sellerId),
+    occupied = new Set(all.map((x) => x.slot));
+  let slot = 0;
+  while (occupied.has(slot)) slot++;
+  if (slot >= 50) throw fail("listing-limit");
+  if (requireProfile(a) !== sellerId) throw fail("auth/user-changed");
+  const id = crypto.randomUUID(),
+    path = sellerId + "_" + slot,
+    stamp = f.serverTimestamp(),
+    data = {
+      id,
+      sellerId,
+      slot,
+      itemKey: v.itemKey,
+      nickname: state.profile.minecraftName,
+      quantity: v.quantity,
+      unitPrice: v.unitPrice,
+      customName: v.customName || "",
+      traitData: v.traitData || "{}",
+      createdAt: stamp,
+      updatedAt: stamp,
+      availableQty: v.quantity,
+      reservedQty: 0,
+      soldQty: 0,
+      lastOperationId: "",
+      lastOperation: "",
+      hasPhoto: !!photo,
+    };
+  const b = f.writeBatch(db);
+  b.set(f.doc(db, "lots", path), data);
+  if (photo)
+    b.set(f.doc(db, "lotPhotos", path), {
+      sellerId,
+      generationId: id,
+      data: photo,
+      createdAt: stamp,
+    });
+  enqueue(b, a, "lot", path);
+  await b.commit();
+  await loadCatalog();
+  return path;
+}
+export async function deleteLot(lot) {
+  const a = await sdk();
+  requireProfile(a);
+  await a.f.runTransaction(a.db, async (tx) => {
+    const ref = a.f.doc(a.db, "lots", lot.docId),
+      snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const d = snap.data();
+    if (d.id !== generation(lot)) throw fail("listing-changed");
+    if (d.sellerId !== state.publicId) throw fail("permission-denied");
+    if ((d.reservedQty || 0) > 0) throw fail("listing-reserved");
+    if (d.hasPhoto) tx.delete(a.f.doc(a.db, "lotPhotos", lot.docId));
+    tx.delete(ref);
+  });
+  lotCache.delete(lot.id);
+  photoCache.delete(lot.id);
+  await loadCatalog();
+}
+export async function loadPhoto(lot) {
+  if (!lot.hasPhoto) return null;
+  if (!photoCache.has(lot.id))
+    photoCache.set(
+      lot.id,
+      (async () => {
+        const { f, db } = await sdk(),
+          d = await f.getDocFromServer(f.doc(db, "lotPhotos", lot.docId));
+        return d.exists() &&
+          d.data().generationId === generation(lot) &&
+          /^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(d.data().data)
+          ? d.data().data
+          : null;
+      })().catch((e) => {
+        photoCache.delete(lot.id);
+        throw e;
+      }),
+    );
+  return photoCache.get(lot.id);
+}
+export async function preparePhoto(file) {
+  if (!file) return null;
+  if (file.size > 5 * 1024 * 1024) throw fail("photo-too-large");
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
+    throw fail("photo-type");
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    if (
+      !img.naturalWidth ||
+      !img.naturalHeight ||
+      img.naturalWidth * img.naturalHeight > 24000000
+    )
+      throw fail("photo-dimensions");
+    let side = 1280;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const ratio = Math.min(
+          1,
+          side / Math.max(img.naturalWidth, img.naturalHeight),
+        ),
+        canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * ratio));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * ratio));
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const quality of [0.8, 0.65, 0.5]) {
+        const data = canvas.toDataURL("image/webp", quality);
+        if (data.startsWith("data:image/webp;base64,") && data.length <= 245760)
+          return data;
+      }
+      side = Math.round(side * 0.75);
+    }
+    throw fail("photo-compression");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+export async function toggleFavorite(lot, kind = "lot") {
+  const a = await sdk(),
+    id = requireProfile(a),
+    { f, db } = a,
+    key = kind === "seller" ? "s_" + lot.sellerId : favoriteId(lot),
+    ref = f.doc(db, "users", state.user.uid, "favorites", key);
+  if (state.favorites.some((x) => x.docId === key)) {
+    await f.deleteDoc(ref);
+    return;
+  }
+  if (state.favorites.length >= 100) throw fail("favorite-limit");
+  await f.setDoc(ref, {
+    kind,
+    sellerId: lot.sellerId,
+    lotDoc: kind === "lot" ? lot.docId : "",
+    generationId: kind === "lot" ? generation(lot) : "",
+    createdAt: f.serverTimestamp(),
+  });
+}
+export async function saveDraft(v) {
+  const a = await sdk();
+  requireProfile(a);
+  await a.f.setDoc(
+    a.f.doc(a.db, "users", state.user.uid, "drafts", "current"),
+    { ...v, updatedAt: a.f.serverTimestamp() },
+  );
+}
+export async function getDraft() {
+  const a = await sdk();
+  requireProfile(a);
+  const d = await a.f.getDocFromServer(
+    a.f.doc(a.db, "users", state.user.uid, "drafts", "current"),
+  );
+  return d.exists() ? d.data() : null;
+}
+export async function markRead(kind, id) {
+  const a = await sdk();
+  requireProfile(a);
+  await a.f.setDoc(
+    a.f.doc(a.db, "users", state.user.uid, "reads", kind + "_" + id),
+    { seenAt: a.f.serverTimestamp() },
+  );
+}
+export const unread = (kind, x) =>
+  x.lastSenderId !== state.publicId &&
+  (x.updatedAt?.toMillis?.() || 0) >
+    (state.reads.get(kind + "_" + x.docId) || 0);
+export async function startThread(lot) {
+  const a = await sdk(),
+    buyerId = requireProfile(a),
+    { f, db } = a;
+  if (buyerId === lot.sellerId) throw fail("own-listing");
+  const id = lot.docId + "~" + generation(lot) + "~" + buyerId,
+    ref = f.doc(db, "threads", id),
+    old = await f.getDocFromServer(ref);
+  if (!old.exists()) {
+    const stamp = f.serverTimestamp();
+    try {
+      await f.setDoc(ref, {
+        sellerId: lot.sellerId,
+        buyerId,
+        members: [lot.sellerId, buyerId],
+        lotDoc: lot.docId,
+        lotGenerationId: generation(lot),
+        itemKey: lot.itemKey,
+        title: lot.customName || "",
+        createdAt: stamp,
+        updatedAt: stamp,
+        lastMessageId: "",
+        lastSenderId: "",
+      });
+    } catch (e) {
+      const again = await f.getDocFromServer(ref);
+      if (!again.exists()) throw e;
+    }
+  }
+  return id;
+}
+export async function listenMessages(id, receive, error) {
+  const { f, db } = await sdk();
+  return f.onSnapshot(
+    f.query(
+      f.collection(db, "threads", id, "messages"),
+      f.orderBy("createdAt", "desc"),
+      f.limit(50),
+    ),
+    (s) =>
+      receive(
+        s.docs.map((d) => ({ ...d.data(), docId: d.id })).reverse(),
+        s.docs.at(-1),
+      ),
+    (e) => error(codeOf(e)),
+  );
+}
+export async function olderMessages(id, cursor) {
+  if (!cursor) return { rows: [], cursor: null };
+  const { f, db } = await sdk(),
+    s = await f.getDocsFromServer(
+      f.query(
+        f.collection(db, "threads", id, "messages"),
+        f.orderBy("createdAt", "desc"),
+        f.startAfter(cursor),
+        f.limit(50),
+      ),
+    );
+  return {
+    rows: s.docs.map((d) => ({ ...d.data(), docId: d.id })).reverse(),
+    cursor: s.docs.at(-1) || null,
+  };
+}
+const messageAttempts = new Map();
+export async function sendMessage(id, body, replyTo = "") {
+  body = body.trim();
+  if (!body || body.length > 2000) throw fail("message-invalid");
+  const a = await sdk(),
+    senderId = requireProfile(a),
+    { f, db } = a,
+    uid = a.instance.currentUser.uid;
+  const key = uid + "|" + id,
+    previous = messageAttempts.get(key),
+    entry =
+      previous?.body === body && previous.replyTo === replyTo
+        ? previous
+        : { msgId: crypto.randomUUID(), body, replyTo };
+  messageAttempts.set(key, entry);
+  while (messageAttempts.size > 50)
+    messageAttempts.delete(messageAttempts.keys().next().value);
+  const ref = f.doc(db, "threads", id, "messages", entry.msgId),
+    stamp = f.serverTimestamp(),
+    b = f.writeBatch(db);
+  b.set(ref, {
+    senderId,
+    body,
+    createdAt: stamp,
+    ...(replyTo ? { replyTo } : {}),
+  });
+  b.set(f.doc(db, "messageRate", uid), { sentAt: stamp });
+  b.update(f.doc(db, "threads", id), {
+    lastMessageId: entry.msgId,
+    lastSenderId: senderId,
+    updatedAt: stamp,
+  });
+  try {
+    await b.commit();
+  } catch (e) {
+    // Same UUID on retry: a lost acknowledgement cannot create a duplicate.
+    let existing;
+    try {
+      existing = await f.getDocFromServer(ref);
+    } catch {}
+    if (
+      !existing?.exists() ||
+      existing.data().senderId !== senderId ||
+      existing.data().body !== body
+    )
+      throw e;
+  }
+  messageAttempts.delete(key);
+  return entry.msgId;
+}
+export async function setChatBlock(peer, blocked) {
+  const a = await sdk(),
+    me = requireProfile(a);
+  if (!/^[A-Za-z0-9]{20}$/.test(peer) || peer === me)
+    throw fail("invalid-argument");
+  const ref = a.f.doc(a.db, "chatBlocks", me, "users", peer);
+  if (blocked) await a.f.setDoc(ref, { createdAt: a.f.serverTimestamp() });
+  else await a.f.deleteDoc(ref);
+}
+export async function getChatBlock(peer) {
+  const a = await sdk(),
+    me = requireProfile(a);
+  const d = await a.f.getDocFromServer(
+    a.f.doc(a.db, "chatBlocks", me, "users", peer),
+  );
+  return d.exists();
+}
+
+function stock(d) {
+  return {
+    availableQty: d.availableQty ?? d.quantity,
+    reservedQty: d.reservedQty ?? 0,
+    soldQty: d.soldQty ?? 0,
+  };
+}
+export async function createDeal(lot, quantity) {
+  await ensureTrade({ lotDoc: lot.docId });
+  if (!Number.isSafeInteger(quantity) || quantity < 1)
+    throw fail("quantity-invalid");
+  const a = await sdk(),
+    buyerId = requireProfile(a),
+    { f, db } = a,
+    id = crypto.randomUUID();
+  try {
+    await f.runTransaction(db, async (tx) => {
+      const ref = f.doc(db, "lots", lot.docId),
+        snap = await tx.get(ref);
+      if (!snap.exists()) throw fail("listing-unavailable");
+      const d = snap.data(),
+        s = stock(d);
+      if (d.id !== generation(lot)) throw fail("listing-changed");
+      if (d.salePaused) throw fail("listing-paused");
+      if (d.unitPrice !== lot.unitPrice) throw fail("price-changed");
+      if (d.sellerId === buyerId) throw fail("own-listing");
+      if (s.availableQty < quantity) throw fail("quantity-unavailable");
+      const stamp = f.serverTimestamp();
+      tx.set(f.doc(db, "deals", id), {
+        sellerId: d.sellerId,
+        buyerId,
+        members: [d.sellerId, buyerId],
+        lotDoc: lot.docId,
+        lotGenerationId: d.id,
+        itemKey: d.itemKey,
+        title: d.customName,
+        quantity,
+        unitPrice: d.unitPrice,
+        total: quantity * d.unitPrice,
+        status: "pending",
+        buyerConfirmed: false,
+        sellerConfirmed: false,
+        cancelledBy: "",
+        createdAt: stamp,
+        updatedAt: stamp,
+      });
+      tx.update(ref, {
+        ...s,
+        availableQty: s.availableQty - quantity,
+        reservedQty: s.reservedQty + quantity,
+        lastOperationId: id,
+        lastOperation: "reserve",
+        updatedAt: stamp,
+      });
+    });
+  } catch (e) {
+    if (["permission-denied", "aborted"].includes(codeOf(e))) {
+      const live = await f.getDocFromServer(f.doc(db, "lots", lot.docId));
+      if (
+        live.exists() &&
+        live.data().id === generation(lot) &&
+        stock(live.data()).availableQty < quantity
+      )
+        throw fail("quantity-unavailable");
+    }
+    throw e;
+  }
+  await markRead("deal", id).catch(() => {});
+  await loadCatalog();
+  return id;
+}
+export async function changeDeal(id, action) {
+  if (action !== "cancel") await ensureTrade({ dealId: id });
+  const a = await sdk(),
+    me = requireProfile(a),
+    { f, db } = a;
+  await f.runTransaction(db, async (tx) => {
+    const ref = f.doc(db, "deals", id),
+      snap = await tx.get(ref);
+    if (!snap.exists()) throw fail("deal-unavailable");
+    const d = snap.data();
+    if (!d.members.includes(me)) throw fail("permission-denied");
+    if (
+      ["accept", "confirm"].includes(action) &&
+      Date.now() >= (d.createdAt?.toMillis?.() || 0) + 172800000
+    )
+      throw fail("deal-expired");
+    const patch = { updatedAt: f.serverTimestamp() };
+    let op = null;
+    if (action === "accept" && me === d.sellerId && d.status === "pending")
+      patch.status = "accepted";
+    else if (
+      action === "cancel" &&
+      ["pending", "accepted"].includes(d.status)
+    ) {
+      patch.status = "cancelled";
+      patch.cancelledBy = me;
+      op = "release";
+    } else if (action === "confirm" && d.status === "accepted") {
+      const key = me === d.buyerId ? "buyerConfirmed" : "sellerConfirmed";
+      if (d[key]) throw fail("already-confirmed");
+      patch[key] = true;
+      if (
+        (key === "buyerConfirmed" || d.buyerConfirmed) &&
+        (key === "sellerConfirmed" || d.sellerConfirmed)
+      ) {
+        patch.status = "completed";
+        op = "complete";
+      }
+    } else throw fail("deal-state-changed");
+    if (op) {
+      const lotRef = f.doc(db, "lots", d.lotDoc),
+        ls = await tx.get(lotRef);
+      if (!ls.exists() || ls.data().id !== d.lotGenerationId)
+        throw fail("listing-changed");
+      const s = stock(ls.data());
+      if (s.reservedQty < d.quantity) throw fail("quantity-unavailable");
+      tx.update(lotRef, {
+        ...s,
+        reservedQty: s.reservedQty - d.quantity,
+        availableQty: s.availableQty + (op === "release" ? d.quantity : 0),
+        soldQty: s.soldQty + (op === "complete" ? d.quantity : 0),
+        lastOperationId: id,
+        lastOperation: op,
+        updatedAt: patch.updatedAt,
+      });
+    }
+    tx.update(ref, patch);
+    if (op === "complete") enqueue(tx, a, "trade", id);
+  });
+  await markRead("deal", id).catch(() => {});
+  await loadCatalog();
+}
+export async function initMarket() {
+  window.addEventListener("zeno-auth-change", loadUser);
+  loadCatalog();
+  loadUser();
+}
+
+const ratings = new Map(),
+  ratingFlights = new Map();
+export function cachedSellerRating(id) {
+  const e = ratings.get(id);
+  return e && Date.now() - e.at < 300000 ? e.value : null;
+}
+export async function loadSellerRating(id) {
+  if (cachedSellerRating(id) !== null) return cachedSellerRating(id);
+  if (ratingFlights.has(id)) return ratingFlights.get(id);
+  const promise = (async () => {
+    const { f, db } = await sdk(),
+      d = await f.getDocFromServer(f.doc(db, "sellerStats", id)),
+      v = d.data();
+    const rating = v?.ratingCount ? v.ratingSum / v.ratingCount : 0;
+    ratings.set(id, { value: rating, at: Date.now() });
+    while (ratings.size > 200) ratings.delete(ratings.keys().next().value);
+    return rating;
+  })().finally(() => ratingFlights.delete(id));
+  ratingFlights.set(id, promise);
+  return promise;
+}

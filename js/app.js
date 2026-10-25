@@ -1,5 +1,22 @@
-import {playerStatus} from './minecraft-ui.js';
-import {accessText} from './minecraft-data.js';
+import { message } from "./localization.js";
+import { initFinishUI } from "./finish-ui.js";
+import {
+  loadItemIndex,
+  loadFullCatalog,
+  THUMBNAIL_KEYS,
+} from "./item-catalog.js";
+import { notificationCenter } from "./notification-center.js";
+import { initReleaseTools } from "./release-tools.js";
+import {
+  pair,
+  loadLocales,
+  markLocalized,
+  translateMarked,
+} from "./localization.js";
+import { activeTask } from "./active-scheduler.js";
+import { normalizeSearch } from "./search-utils.js";
+import { playerStatus } from "./minecraft-ui.js";
+import { accessText, nextManualCheck } from "./minecraft-data.js";
 import { initTrading, trading } from "./trading-ui.js";
 import { initQuality } from "./quality.js";
 import { initExperience, experience } from "./experience.js";
@@ -13,7 +30,10 @@ import {
 const $ = (s) => document.querySelector(s),
   node = (tag, text, cls) => {
     const e = document.createElement(tag);
-    if (text !== undefined) e.textContent = text;
+    if (text !== undefined) {
+      e.textContent = text;
+      markLocalized(e, text);
+    }
     if (cls) e.className = cls;
     return e;
   },
@@ -78,7 +98,8 @@ const x = (ru, en) => (lang === "en" ? en : ru),
     const v = labels[k];
     return v ? x(...v) : k;
   },
-  item = (k) => catalog.items.find((i) => i.key === k),
+  itemIndex = new Map(),
+  item = (k) => itemIndex.get(k),
   name = (i) => i?.[lang] || i?.key || "-",
   format = (n) => new Intl.NumberFormat(lang).format(n),
   time = (v) =>
@@ -90,59 +111,7 @@ const x = (ru, en) => (lang === "en" ? en : ru),
           minute: "2-digit",
         }).format(v.toDate())
       : "";
-const labels = {
-  account: ["Аккаунт", "Account"],
-  verifyMinecraft: ["Проверить привязку Minecraft", "Verify Minecraft link"],
-  verificationHelp: ["Ник берётся из Minecraft-аккаунта, привязанного к твоему Discord на Chromacube. Ввод чужого ника отключён. Для торговли нужны доступ к ваниле и отсутствие бана.", "Your nickname comes from the Minecraft account linked to your Discord on Chromacube. Manual nickname entry is disabled. Trading requires vanilla access and no ban."],
-  linkChromacube: ["Открыть Chromacube для привязки ↗", "Open Chromacube to link accounts ↗"],
-  minecraftName: ["Ник Minecraft", "Minecraft nickname"],
-  nicknameHelp: [
-    "3-16 символов: A-Z, a-z, цифры и _. Ник виден другим игрокам.",
-    "3-16 characters: A-Z, a-z, digits and _. Your nickname is public.",
-  ],
-  save: ["Сохранить", "Save"],
-  myLots: ["Мои объявления", "My listings"],
-  deals: ["Сделки", "Deals"],
-  logout: ["Выйти", "Sign out"],
-  newLot: ["Новое объявление", "New listing"],
-  selectItem: ["Выбери предмет", "Select an item"],
-  itemSearch: ["Название предмета…", "Search items…"],
-  quantity: ["Количество, шт.", "Quantity, items"],
-  unitPrice: ["Цена за 1 шт., АР", "Unit price, AR"],
-  customName: [
-    "Название предмета (необязательно)",
-    "Custom item name (optional)",
-  ],
-  enchantments: ["Чары (необязательно)", "Enchantments (optional)"],
-  enchantSearch: ["Поиск чар…", "Search enchantments…"],
-  photo: ["Фото предмета", "Item photo"],
-  photoHelp: [
-    "JPG, PNG или WebP до 5 МБ. Перед загрузкой изображение уменьшается и сжимается.",
-    "JPG, PNG or WebP up to 5 MB. Images are resized and compressed before upload.",
-  ],
-  total: ["За весь лот", "Total price"],
-  saveDraft: ["Сохранить черновик", "Save draft"],
-  loadDraft: ["Открыть черновик", "Load draft"],
-  publish: ["Опубликовать", "Publish"],
-  favorites: ["Избранное", "Favorites"],
-  chats: ["Чаты", "Chats"],
-  message: ["Сообщение…", "Write a message…"],
-  olderMessages: ["Ранние сообщения", "Earlier messages"],
-  notifications: ["Уведомления", "Notifications"],
-  rules: ["Правила", "Rules"],
-  exchangeNotice: [
-    "Обмен происходит в Minecraft. Сначала договоритесь с продавцом, проверьте предмет и количество. Подтверждайте завершение только после обмена.",
-    "Trade takes place in Minecraft. Agree with the seller and check the item and quantity. Confirm completion only after the exchange.",
-  ],
-  rulesBody: [
-    "Не передавай пароли и коды входа. Ник и чары указывает сам игрок. Сайт не проверяет игровой инвентарь. Запрос сделки резервирует количество; любой участник может отменить незавершённую сделку. Завершение фиксируется после подтверждения обоих участников.",
-    "Never share passwords or sign-in codes. Nicknames and enchantments are provided by players; the website cannot verify game inventories. A deal request reserves stock; either participant can cancel an unfinished deal. Completion requires both participants to confirm.",
-  ],
-  footer: [
-    "Независимый маркетплейс Minecraft. Без кошельков и онлайн-оплаты.",
-    "Independent Minecraft marketplace. No wallets or online payments.",
-  ],
-};
+const labels = new Proxy({}, { get: (_, key) => pair("app", key) });
 function t(k) {
   return k.split(".").reduce((v, p) => v?.[p], dict?.[lang]) || k;
 }
@@ -154,7 +123,16 @@ function sprite(i) {
     Math.floor((i?.index || 0) / catalog.meta.columns) % 8,
   );
   const atlasPart = Math.floor((i?.index || 0) / (catalog.meta.columns * 8));
-  s.style.setProperty("--item-atlas", `url("../assets/items-${atlasPart}.webp")`);
+  s.style.setProperty(
+    "--item-atlas",
+    `url("../assets/items-${atlasPart}.webp")`,
+  );
+  if (THUMBNAIL_KEYS.has(i?.key)) {
+    s.style.backgroundImage = 'url("./assets/item-thumbs/' + i.key + '.webp")';
+    s.style.backgroundSize = "contain";
+    s.style.backgroundPosition = "center";
+    s.style.backgroundRepeat = "no-repeat";
+  }
   s.setAttribute("role", "img");
   s.setAttribute("aria-label", name(i));
   return s;
@@ -191,103 +169,39 @@ function toast(text) {
   toastTimer = setTimeout(() => ($("#toast").style.display = "none"), 4000);
 }
 function error(e) {
-  if(e?.code?.startsWith('minecraft-'))return accessText(e.code.slice(10),lang==='en');
-  if(e?.code?.startsWith('counterparty-'))return x('У второго участника торговля недоступна. Нужны привязка Minecraft, доступ к ваниле и отсутствие бана.','The other participant cannot trade. A linked Minecraft account, vanilla access and no ban are required.');
+  if (e?.code?.startsWith("minecraft-"))
+    return accessText(e.code.slice(10), lang === "en");
+  if (e?.code?.startsWith("counterparty-"))
+    return x(...pair("inline", "t955683645df7"));
   const code = m.codeOf(e),
     messages = {
-      "subscription-limit": x("Достигнут лимит интерфейса: 50 подписок. Удали ненужную.","Interface limit: 50 subscriptions. Remove an unused one."),
-      "deal-expired": x("48 часов истекли. Отмените сделку, чтобы освободить резерв.","48 hours elapsed. Cancel the trade to release stock."),
-      "listing-paused": x("Продавец снял лот с продажи.","Seller paused this listing."),
-      "promo-limit": x(
-        "Заняты все 10 рекламных мест. Удалите ненужный баннер.",
-        "All 10 banner slots are occupied. Delete an unused banner.",
-      ),
-      "dates-invalid": x(
-        "Дата окончания должна быть позже начала.",
-        "The end must be after the start.",
-      ),
-      "link-invalid": x(
-        "Нужна HTTPS-ссылка без логина и пароля.",
-        "Use an HTTPS link without a username or password.",
-      ),
-      "nickname-ambiguous": x(
-        "Этот ник используют несколько аккаунтов. Найдите пользователя по UID.",
-        "Several accounts use this nickname. Search by UID.",
-      ),
-      "profile-required": x(
-        "Сначала подтверди Minecraft-привязку в аккаунте.",
-        "Verify your Minecraft link in Account first.",
-      ),
-      "auth/sign-in-required": x(
-        "Сначала войди через Discord.",
-        "Sign in with Discord first.",
-      ),
-      "nickname-invalid": x(
-        "Проверь ник: 3-16 латинских букв, цифры или _.",
-        "Use 3-16 letters, digits or _.",
-      ),
-      "listing-limit": x(
-        "Не больше 50 активных объявлений.",
-        "Maximum 50 active listings.",
-      ),
-      "listing-reserved": x(
-        "В лоте есть резерв. Заверши или отмени сделки перед удалением.",
-        "The listing has reservations. Complete or cancel its deals before deleting.",
-      ),
-      "listing-changed": x(
-        "Лот изменился. Обнови каталог.",
-        "The listing changed. Refresh the catalog.",
-      ),
-      "listing-unavailable": x(
-        "Лот уже недоступен.",
-        "This listing is no longer available.",
-      ),
-      "quantity-unavailable": x(
-        "Такого количества уже нет в наличии.",
-        "That quantity is no longer available.",
-      ),
-      "bump-cooldown": x("Поднять лот можно раз в 24 часа.","A listing can be bumped once every 24 hours."),
-      "listing-hidden": x("Лот скрыт модератором. Правка недоступна.","Listing hidden by moderation. Editing unavailable."),
-      "price-changed": x(
-        "Цена изменилась. Обнови лот перед подтверждением.",
-        "The price changed. Refresh the listing before confirming.",
-      ),
-      "photo-too-large": x(
-        "Выбери фото до 5 МБ.",
-        "Choose a photo up to 5 MB.",
-      ),
-      "photo-type": x(
-        "Поддерживаются JPG, PNG и WebP.",
-        "JPG, PNG and WebP are supported.",
-      ),
-      "photo-dimensions": x(
-        "Фото слишком большого разрешения.",
-        "The image dimensions are too large.",
-      ),
-      "photo-compression": x(
-        "Не удалось уменьшить фото. Выбери другое изображение.",
-        "Could not compress this photo. Choose another image.",
-      ),
-      "permission-denied": x(
-        "Нет доступа к операции. Проверь вход и обнови страницу.",
-        "This action is not allowed. Check sign-in and refresh.",
-      ),
-      "favorite-limit": x(
-        "Можно сохранить до 100 избранных записей.",
-        "Up to 100 favorite entries can be saved.",
-      ),
-      "deal-state-changed": x(
-        "Состояние сделки изменилось. Открой её снова.",
-        "The deal status changed. Open it again.",
-      ),
+      "subscription-limit": x(...pair("inline", "t8263437b617c")),
+      "deal-expired": x(...pair("inline", "t745568b0f055")),
+      "listing-paused": x(...pair("inline", "tc68285da296d")),
+      "promo-limit": x(...pair("inline", "te98bedbbf677")),
+      "dates-invalid": x(...pair("inline", "t62706171b25c")),
+      "link-invalid": x(...pair("inline", "tf7c561cfcde7")),
+      "nickname-ambiguous": x(...pair("inline", "t0669910f7a32")),
+      "profile-required": x(...pair("inline", "tc204cf9a728c")),
+      "auth/sign-in-required": x(...pair("inline", "t6c2825bb5051")),
+      "nickname-invalid": x(...pair("inline", "t2a4f82b53d12")),
+      "listing-limit": x(...pair("inline", "t368154a35408")),
+      "listing-reserved": x(...pair("inline", "t97a3bd10659b")),
+      "listing-changed": x(...pair("inline", "tf73a7188d380")),
+      "listing-unavailable": x(...pair("inline", "td16d490598e5")),
+      "quantity-unavailable": x(...pair("inline", "t5d80c5559514")),
+      "bump-cooldown": x(...pair("inline", "ta16d984a3480")),
+      "listing-hidden": x(...pair("inline", "t408ec7eb38e5")),
+      "price-changed": x(...pair("inline", "tad0d697d8337")),
+      "photo-too-large": x(...pair("inline", "tcb2f6c50b3d1")),
+      "photo-type": x(...pair("inline", "t4960ce6b4e68")),
+      "photo-dimensions": x(...pair("inline", "t5b2f09d3fbee")),
+      "photo-compression": x(...pair("inline", "t6f09bd92dbc6")),
+      "permission-denied": x(...pair("inline", "tbaacd978f62c")),
+      "favorite-limit": x(...pair("inline", "tf964a85ff26e")),
+      "deal-state-changed": x(...pair("inline", "t9a676372f991")),
     };
-  return (
-    messages[code] ||
-    x(
-      "Не удалось выполнить запрос. Проверь соединение и попробуй ещё раз.",
-      "Request failed. Check your connection and try again.",
-    )
-  );
+  return messages[code] || x(...pair("inline", "t81eff89d9be6"));
 }
 async function task(button, status, fn) {
   if (button?.disabled) return;
@@ -309,15 +223,21 @@ function show(id) {
   if (!$("#" + id).open) $("#" + id).showModal();
 }
 function requireAccount(reason = "") {
+  if (m.state.accountLoading) {
+    toast(x(...pair("finish", "loading")));
+    return false;
+  }
   if (!m.state.user || !m.state.profile) {
     showDiscordAuth();
-    if(reason === "favorites") $("#auth-note").textContent = x("Войди через Discord, чтобы сохранять избранное.","Sign in with Discord to save favorites.");
+    if (reason === "favorites")
+      $("#auth-note").textContent = x(...pair("inline", "tfc19e88ba6b3"));
     return false;
   }
   return true;
 }
 function setUI() {
   document.documentElement.lang = lang;
+  translateMarked();
   document.querySelectorAll("[data-t]").forEach((e) => {
     const v = t(e.dataset.t);
     if (typeof v === "string") e.textContent = v;
@@ -339,8 +259,8 @@ function setUI() {
       node("span", k.toUpperCase(), k === lang ? "current" : ""),
     ),
   );
-  $("#refresh").textContent = x("Обновить", "Refresh");
-  $("#load-more").textContent = x("Загрузить ещё", "Load more");
+  $("#refresh").textContent = x(...pair("inline", "t6c317d069a14"));
+  $("#load-more").textContent = x(...pair("inline", "tcde9f6e977c6"));
   refreshDiscordAuth();
   renderAccount();
   renderCategories();
@@ -362,7 +282,7 @@ function renderAccount() {
   $("#my-lots").disabled = !m.state.profile;
   $("#auth-note").hidden = signed;
   $("#account-connection").textContent = signed
-    ? x("Discord подключён", "Discord connected")
+    ? x(...pair("inline", "te5af1702dfb6"))
     : "";
   const old = $("#account-head"),
     img = head(nick);
@@ -370,11 +290,31 @@ function renderAccount() {
   old.replaceWith(img);
   const field = $("#minecraft-name");
   field.value = nick || "";
-  field.readOnly=true;field.required=false;
-  $("#minecraft-access").textContent=signed?accessText(m.state.minecraftAccess?.reason,lang==='en'):"";
-  $("#minecraft-access").classList.toggle("is-allowed",m.state.minecraftAccess?.allowed===true);
-  if(signed&&m.state.publicId&&$("#account-minecraft-status").querySelector("[data-mc-player]")?.dataset.mcPlayer!==m.state.publicId)$("#account-minecraft-status").replaceChildren(playerStatus(m.state.publicId));
-  if(!signed)$("#account-minecraft-status").replaceChildren();
+  field.readOnly = true;
+  field.required = false;
+  if (signed) {
+    const remaining = nextManualCheck(m.state.user.uid);
+    $("#save-profile").disabled = remaining > 0;
+    $("#save-profile").title =
+      remaining > 0 ? x(...pair("inline", "tf060e2be0a7a")) : "";
+  }
+  $("#minecraft-access").textContent = signed
+    ? accessText(m.state.minecraftAccess?.reason, lang === "en")
+    : "";
+  $("#minecraft-access").classList.toggle(
+    "is-allowed",
+    m.state.minecraftAccess?.allowed === true,
+  );
+  if (
+    signed &&
+    m.state.publicId &&
+    $("#account-minecraft-status").querySelector("[data-mc-player]")?.dataset
+      .mcPlayer !== m.state.publicId
+  )
+    $("#account-minecraft-status").replaceChildren(
+      playerStatus(m.state.publicId),
+    );
+  if (!signed) $("#account-minecraft-status").replaceChildren();
   const login = $('[data-action="login"]'),
     oldImg = login.querySelector(".p-head");
   if (oldImg) oldImg.remove();
@@ -382,15 +322,16 @@ function renderAccount() {
   mini.hidden = !signed;
   login.prepend(mini);
   const span = login.querySelector("span");
-  span.textContent = signed ? x("Аккаунт", "Account") : x("Войти", "Sign in");
+  span.textContent = signed
+    ? x(...pair("inline", "t37ec4fa696cb"))
+    : x(...pair("inline", "t954917073a3d"));
   if (m.state.privateError)
     $("#profile-status").textContent = error({ code: m.state.privateError });
 }
 function matches(i, q) {
-  const all = (i.ru + " " + i.en + " " + i.key).toLowerCase();
-  return q
+  const all = normalizeSearch(i.ru + " " + i.en + " " + i.key);
+  return normalizeSearch(q)
     .trim()
-    .toLowerCase()
     .split(/\s+/)
     .every((w) => all.includes(w));
 }
@@ -427,38 +368,217 @@ function prunePhotoObservers() {
     }
 }
 const available = (l) => l.availableQty ?? l.quantity;
+let ratingLoad = false,
+  ratingFailed = false,
+  ratingVersion = 0,
+  catalogSignature = "";
 function renderCatalog() {
   prunePhotoObservers();
   if (!catalog) return;
+  const signature = JSON.stringify([
+    m.state.rows.map((l) => [
+      l.id,
+      l.updatedAt?.toMillis?.(),
+      l.unitPrice,
+      l.availableQty,
+      l.quantity,
+      l.salePaused,
+      l.visibility,
+      l.customName,
+    ]),
+    m.state.favorites.map((f) => f.docId),
+    m.state.publicId,
+    m.state.status,
+    m.state.error,
+    m.state.catalogFromCache,
+    m.state.more,
+    lang,
+    category,
+    ...[
+      "search",
+      "min-price",
+      "max-price",
+      "sort",
+      "has-photo",
+      "has-enchants",
+      "qty-min",
+      "qty-max",
+      "only-available",
+      "rating-four",
+    ].map((id) => {
+      const e = $("#" + id);
+      return e?.type === "checkbox" ? e.checked : e?.value;
+    }),
+    ratingVersion,
+  ]);
+  if (signature === catalogSignature) return;
+  catalogSignature = signature;
+
   const query = $("#search").value;
-  let rows = m.state.rows.filter(l => l.visibility !== "hidden" && !l.salePaused && item(l.itemKey)).filter(l => {
-    let traits = "";
-    try { traits = (JSON.parse(l.traitData || "{}").enchantmentSelections || []).map(v => {const e = enchantments.find(e=>e.id === v.id);return e ? e.ru+" "+e.en+" "+v.level : v.id}).join(" "); } catch {}
-    return (category === "all" || item(l.itemKey).category === category) && matches({...item(l.itemKey),ru:item(l.itemKey).ru+" "+(l.customName||"")+" "+l.nickname+" "+traits,en:item(l.itemKey).en+" "+(l.customName||"")+" "+l.nickname+" "+traits},query);
-  });
-  const min=$("#min-price").value,max=$("#max-price").value;
-  if(min!=="")rows=rows.filter(l=>l.unitPrice*available(l)>=Number(min));
-  if(max!=="")rows=rows.filter(l=>l.unitPrice*available(l)<=Number(max));
-  if($("#has-photo").checked)rows=rows.filter(l=>l.hasPhoto);
-  if($("#has-enchants").checked)rows=rows.filter(l=>{try{return !!JSON.parse(l.traitData||"{}").enchantmentSelections?.length}catch{return false}});
-  const sort=$("#sort").value;
-  rows.sort(sort === "priceAsc" ? (a,b)=>a.unitPrice*available(a)-b.unitPrice*available(b) : sort === "priceDesc" ? (a,b)=>b.unitPrice*available(b)-a.unitPrice*available(a) : sort === "name" ? (a,b)=>name(item(a.itemKey)).localeCompare(name(item(b.itemKey)),lang) : (a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
-  const box=$("#results"),status=$("#catalog-status");
-  box.replaceChildren();box.setAttribute("aria-busy",String(m.state.status === "loading"));
-  status.dataset.state=m.state.status === "error" ? "error" : m.state.status === "loading" ? "loading" : m.state.catalogFromCache ? "offline" : "success";
-  status.classList.toggle("v-offline",m.state.catalogFromCache);
+  let rows = m.state.rows
+    .filter(
+      (l) => l.visibility !== "hidden" && !l.salePaused && item(l.itemKey),
+    )
+    .filter((l) => {
+      let traits = "";
+      try {
+        traits = (JSON.parse(l.traitData || "{}").enchantmentSelections || [])
+          .map((v) => {
+            const e = enchantments.find((e) => e.id === v.id);
+            return e ? e.ru + " " + e.en + " " + v.level : v.id;
+          })
+          .join(" ");
+      } catch {}
+      return (
+        (category === "all" || item(l.itemKey).category === category) &&
+        matches(
+          {
+            ...item(l.itemKey),
+            ru:
+              item(l.itemKey).ru +
+              " " +
+              (l.customName || "") +
+              " " +
+              l.nickname +
+              " " +
+              traits,
+            en:
+              item(l.itemKey).en +
+              " " +
+              (l.customName || "") +
+              " " +
+              l.nickname +
+              " " +
+              traits,
+          },
+          query,
+        )
+      );
+    });
+  const min = $("#min-price").value,
+    max = $("#max-price").value;
+  if (min !== "")
+    rows = rows.filter((l) => l.unitPrice * available(l) >= Number(min));
+  if (max !== "")
+    rows = rows.filter((l) => l.unitPrice * available(l) <= Number(max));
+  if ($("#has-photo").checked) rows = rows.filter((l) => l.hasPhoto);
+  if ($("#has-enchants").checked)
+    rows = rows.filter((l) => {
+      try {
+        return !!JSON.parse(l.traitData || "{}").enchantmentSelections?.length;
+      } catch {
+        return false;
+      }
+    });
+  const qmin = $("#qty-min")?.value,
+    qmax = $("#qty-max")?.value;
+  if (qmin) rows = rows.filter((l) => available(l) >= Number(qmin));
+  if (qmax) rows = rows.filter((l) => available(l) <= Number(qmax));
+  if ($("#only-available")?.checked)
+    rows = rows.filter((l) => available(l) > 0);
+  if ($("#rating-four")?.checked) {
+    const missing = [...new Set(rows.map((l) => l.sellerId))].filter(
+      (id) => m.cachedSellerRating(id) === null,
+    );
+    if (missing.length && !ratingLoad && !ratingFailed) {
+      ratingLoad = true;
+      Promise.all(missing.map(m.loadSellerRating))
+        .catch(() => {
+          ratingFailed = true;
+          toast(x(...pair("inline", "tc370e7508557")));
+        })
+        .finally(() => {
+          ratingLoad = false;
+          ratingVersion++;
+          renderCatalog();
+        });
+    }
+    rows = rows.filter((l) => (m.cachedSellerRating(l.sellerId) || 0) >= 4);
+  } else ratingFailed = false;
+  const sort = $("#sort").value;
+  rows.sort(
+    sort === "priceAsc"
+      ? (a, b) => a.unitPrice * available(a) - b.unitPrice * available(b)
+      : sort === "priceDesc"
+        ? (a, b) => b.unitPrice * available(b) - a.unitPrice * available(a)
+        : sort === "name"
+          ? (a, b) =>
+              name(item(a.itemKey)).localeCompare(name(item(b.itemKey)), lang)
+          : (a, b) =>
+              (b.createdAt?.toMillis?.() || 0) -
+              (a.createdAt?.toMillis?.() || 0),
+  );
+  const box = $("#results"),
+    status = $("#catalog-status");
+  box.replaceChildren();
+  box.setAttribute("aria-busy", String(m.state.status === "loading"));
+  status.dataset.state =
+    m.state.status === "error"
+      ? "error"
+      : m.state.status === "loading"
+        ? "loading"
+        : m.state.catalogFromCache
+          ? "offline"
+          : "success";
+  status.classList.toggle("v-offline", m.state.catalogFromCache);
   $(".cloud-controls").hidden = m.state.status === "error";
-  if(m.state.status === "error") {
-    const empty=node("div",undefined,"q-empty q-error"),retry=node("button",x("Повторить","Try again"),"v-primary");retry.type="button";retry.onclick=()=>m.loadCatalog();empty.setAttribute("role","alert");empty.append(icon("refresh"),node("h3",x("Не удалось загрузить объявления","Could not load listings")),node("p",error({code:m.state.error})),retry);box.append(empty);
-  } else if(!rows.length && m.state.status === "loading") {
-    for(let i=0;i<6;i++){const sk=node("div",undefined,"q-skeleton-card");sk.setAttribute("aria-hidden","true");sk.append(node("div"),node("span"),node("span"));box.append(sk)}
-  } else if(!rows.length) {
-    const empty=node("div",undefined,"q-empty"),reset=node("button",x("Сбросить фильтры","Reset filters"),"v-secondary");reset.type="button";reset.onclick=()=>$("#reset-filters").click();empty.append(icon("grid"),node("h3",x("Объявлений пока нет","No listings found")),node("p",x("Попробуй другой поиск или создай свой лот.","Try another search or publish a listing.")),reset);box.append(empty);
+  if (m.state.status === "error") {
+    const empty = node("div", undefined, "q-empty q-error"),
+      retry = node(
+        "button",
+        x(...pair("inline", "t1c2a28e4fbce")),
+        "v-primary",
+      );
+    retry.type = "button";
+    retry.onclick = () => m.loadCatalog();
+    empty.setAttribute("role", "alert");
+    empty.append(
+      icon("refresh"),
+      node("h3", x(...pair("inline", "tda6cf58d8389"))),
+      node("p", error({ code: m.state.error })),
+      retry,
+    );
+    box.append(empty);
+  } else if (!rows.length && m.state.status === "loading") {
+    for (let i = 0; i < 6; i++) {
+      const sk = node("div", undefined, "q-skeleton-card");
+      sk.setAttribute("aria-hidden", "true");
+      sk.append(node("div"), node("span"), node("span"));
+      box.append(sk);
+    }
+  } else if (!rows.length) {
+    const empty = node("div", undefined, "q-empty"),
+      reset = node(
+        "button",
+        x(...pair("inline", "t5f1cb2c20575")),
+        "v-secondary",
+      );
+    reset.type = "button";
+    reset.onclick = () => $("#reset-filters").click();
+    empty.append(
+      icon("grid"),
+      node("h3", x(...pair("inline", "t733b19de0d27"))),
+      node("p", x(...pair("inline", "t4ef1891382c7"))),
+      reset,
+    );
+    box.append(empty);
   } else box.append(...rows.map(card));
-  status.textContent=m.state.status === "loading" ? x("Обновляем объявления…","Updating listings…") : (m.state.catalogFromCache ? x("Нет соединения. Показаны сохранённые данные.","Offline. Showing cached data.") : x("Обновляется автоматически","Updates automatically"))+" · "+x("Загружено: ","Loaded: ")+m.state.rows.length;
-  $("#result-count").textContent=x(`Найдено: ${rows.length} из загруженных`,`Found: ${rows.length} in loaded listings`);
-  $("#load-more").hidden=!m.state.more||m.state.status === "error";$("#load-more").disabled=m.state.status === "loading";
+  status.textContent =
+    m.state.status === "loading"
+      ? x(...pair("inline", "te43cb9882656"))
+      : (m.state.catalogFromCache
+          ? x(...pair("inline", "tc667e5c2aa21"))
+          : x(...pair("inline", "ta5f073567686"))) +
+        " · " +
+        x(...pair("inline", "t520cab3183a4")) +
+        m.state.rows.length;
+  $("#result-count").textContent = message("dynamic", "m16beb1c0cad6", {
+    v0: rows.length,
+  });
+  $("#load-more").hidden = !m.state.more || m.state.status === "error";
+  $("#load-more").disabled = m.state.status === "loading";
   quality?.catalogChanged();
+  prunePhotoObservers();
 }
 
 function art(l) {
@@ -493,22 +613,77 @@ function art(l) {
     photoObservers.set(a, observer);
     observer.observe(a);
   }
+  const badges = node("div", undefined, "release-card-badges");
+  if (l.hasPhoto)
+    badges.append(node("span", x(...pair("inline", "t7d82a20d5713"))));
+  try {
+    if (JSON.parse(l.traitData || "{}").enchantmentSelections?.length)
+      badges.append(node("span", x(...pair("inline", "t2c6de8460f1d"))));
+  } catch {}
+  if (badges.childElementCount) a.append(badges);
   return a;
 }
 function person(l) {
   const b = node("button", undefined, "p-person seller-open");
   b.type = "button";
-  const nick=node("span",l.nickname||"-");nick.dataset.mcName=l.sellerId;b.append(head(l.nickname),nick);
+  const nick = node("span", l.nickname || "-");
+  nick.dataset.mcName = l.sellerId;
+  b.append(head(l.nickname), nick);
   b.onclick = () => openSeller(l.sellerId, l.nickname);
   return b;
 }
 function card(l) {
- const c=node("article",undefined,"listing-card"),open=node("button",undefined,"listing-open");open.type="button";open.setAttribute("aria-label",l.customName||name(item(l.itemKey)));open.append(art(l));open.onclick=()=>openLot(l);
- const f=node("button",undefined,"listing-heart");f.type="button";const saved=m.state.favorites.some(v=>v.docId===m.favoriteId(l));f.setAttribute("aria-label",x("В избранное","Favorite"));f.setAttribute("aria-pressed",String(saved));f.classList.toggle("selected",saved);f.append(icon("heart"));f.onclick=()=>{if(requireAccount("favorites"))task(f,null,()=>m.toggleFavorite(l))};
- const title=node("h3",l.customName||name(item(l.itemKey)),"listing-title"),price=node("div",undefined,"listing-price"),unit=node("small",x("за штуку","per item"),"q-price-caption");price.append(money(l.unitPrice),unit);
- const quantity=node("p",x(`В наличии: ${format(available(l))} шт.`,`Available: ${format(available(l))}`),"listing-quantity");c.append(open,f,title,price,quantity);
- if(available(l)>1){const total=node("p",undefined,"listing-unit-price");total.append(x("Весь лот: ","Whole lot: "),money(l.unitPrice*available(l)));c.append(total)}
- c.append(person(l),playerStatus(l.sellerId));trading.decorate(c,l);c.addEventListener("click",e=>{if(!e.target.closest("button,a,input,select"))openLot(l)});return c;
+  const c = node("article", undefined, "listing-card"),
+    open = node("button", undefined, "listing-open");
+  open.type = "button";
+  open.setAttribute(
+    "aria-label",
+    (l.customName || name(item(l.itemKey))) + ", " + available(l),
+  );
+  open.append(art(l));
+  open.onclick = () => openLot(l);
+  const f = node("button", undefined, "listing-heart");
+  f.type = "button";
+  const saved = m.state.favorites.some((v) => v.docId === m.favoriteId(l));
+  f.setAttribute("aria-label", x(...pair("inline", "tae891889e9d9")));
+  f.setAttribute("aria-pressed", String(saved));
+  f.classList.toggle("selected", saved);
+  f.append(icon("heart"));
+  f.onclick = () => {
+    if (requireAccount("favorites")) task(f, null, () => m.toggleFavorite(l));
+  };
+  const title = node(
+      "h3",
+      l.customName || name(item(l.itemKey)),
+      "listing-title",
+    ),
+    price = node("div", undefined, "listing-price"),
+    unit = node(
+      "small",
+      x(...pair("inline", "t890027861a74")),
+      "q-price-caption",
+    );
+  price.append(money(l.unitPrice), unit);
+  const quantity = node(
+    "p",
+    message("dynamic", "m40ca2e137527", { v0: format(available(l)) }),
+    "listing-quantity",
+  );
+  c.append(open, f, title, price, quantity);
+  if (available(l) > 1) {
+    const total = node("p", undefined, "listing-unit-price");
+    total.append(
+      x(...pair("inline", "t57215423476a")),
+      money(l.unitPrice * available(l)),
+    );
+    c.append(total);
+  }
+  c.append(person(l), playerStatus(l.sellerId, { presence: false }));
+  trading.decorate(c, l);
+  c.addEventListener("click", (e) => {
+    if (!e.target.closest("button,a,input,select")) openLot(l);
+  });
+  return c;
 }
 
 function renderSellerFavorite() {
@@ -520,8 +695,8 @@ function renderSellerFavorite() {
   b.setAttribute("aria-pressed", String(saved));
   b.classList.toggle("selected", saved);
   b.querySelector("span").textContent = saved
-    ? x("В избранном", "Saved seller")
-    : x("В избранное", "Save seller");
+    ? x(...pair("inline", "t43a7e0005d53"))
+    : x(...pair("inline", "tdc489cc4402d"));
 }
 async function openSeller(id, nickname) {
   try {
@@ -539,8 +714,19 @@ async function openLot(l) {
     media = node("div", undefined, "p-lot-art"),
     info = node("div", undefined, "p-lot-info");
   media.append(art(l));
-  info.append(node("h3", l.customName || name(item(l.itemKey))), person(l),playerStatus(l.sellerId));
-  const share=node("button",x("Поделиться лотом","Share listing"),"v-secondary");share.type="button";share.onclick=()=>quality?.shareLot(l);info.append(share);
+  info.append(
+    node("h3", l.customName || name(item(l.itemKey))),
+    person(l),
+    playerStatus(l.sellerId),
+  );
+  const share = node(
+    "button",
+    x(...pair("inline", "t7fbb75f74d19")),
+    "v-secondary",
+  );
+  share.type = "button";
+  share.onclick = () => quality?.shareLot(l);
+  info.append(share);
   const price = node("div", undefined, "p-price");
   price.append(money(l.unitPrice * available(l)));
   info.append(
@@ -548,10 +734,10 @@ async function openLot(l) {
     price,
     node(
       "p",
-      x(
-        `В наличии: ${available(l)} • В резерве: ${l.reservedQty || 0}`,
-        `Available: ${available(l)} • Reserved: ${l.reservedQty || 0}`,
-      ),
+      message("dynamic", "mb4a567ee28d0", {
+        v0: available(l),
+        v1: l.reservedQty || 0,
+      }),
     ),
   );
   const trait = node("div");
@@ -571,18 +757,11 @@ async function openLot(l) {
   info.append(trait);
   if (l.visibility === "hidden")
     info.append(
-      node(
-        "p",
-        x(
-          "Объявление скрыто модерацией. Новые сделки недоступны.",
-          "Listing hidden by moderation. New deals are disabled.",
-        ),
-        "a-hidden-lot",
-      ),
+      node("p", x(...pair("inline", "t76bcf394e14c")), "a-hidden-lot"),
     );
   const report = node(
     "button",
-    x("Пожаловаться", "Report"),
+    x(...pair("inline", "t2341294be242")),
     "a-report-link text-button",
   );
   report.type = "button";
@@ -593,28 +772,25 @@ async function openLot(l) {
       generation: m.generation(l),
       label: l.customName || name(item(l.itemKey)),
     });
-  info.append(report);trading.lotActions(info,l);
+  info.append(report);
+  trading.lotActions(info, l);
   const status = node("p", undefined, "p-status");
   status.id = "lot-status";
   if (m.owns(l)) {
     const del = node(
       "button",
-      x("Удалить объявление", "Delete listing"),
+      x(...pair("inline", "t6fafefa0f3e3")),
       "text-button",
     );
     del.id = "delete-lot";
     del.type = "button";
     del.append(icon("close"));
     del.onclick = () => {
-      if (
-        confirm(
-          x("Удалить объявление и фото?", "Delete the listing and photo?"),
-        )
-      )
+      if (confirm(x(...pair("inline", "t9e8a4a057eb8"))))
         task(del, status, async () => {
           await m.deleteLot(l);
           $("#lot-dialog").close();
-          toast(x("Объявление удалено", "Listing deleted"));
+          toast(x(...pair("inline", "t6a93cc3f7ca2")));
         });
     };
     info.append(del);
@@ -623,7 +799,7 @@ async function openLot(l) {
     chat.id = "start-chat";
     chat.append(
       icon("message"),
-      node("span", x("Написать игроку", "Message player")),
+      node("span", x(...pair("inline", "taa29aa3443cc"))),
     );
     chat.onclick = () => {
       if (requireAccount())
@@ -653,23 +829,17 @@ async function openLot(l) {
     update();
     const submit = node(
       "button",
-      x("Запросить сделку", "Request a deal"),
+      x(...pair("inline", "te703bdedb011")),
       "primary",
     );
     submit.id = "request-deal";
     submit.type = "submit";
-    submit.disabled = available(l) <= 0 || l.visibility === "hidden" || l.salePaused;
+    submit.disabled =
+      available(l) <= 0 || l.visibility === "hidden" || l.salePaused;
     order.append(
       label,
       total,
-      node(
-        "p",
-        x(
-          "Выбранное количество будет зарезервировано. Продавец должен принять запрос.",
-          "The selected quantity will be reserved. The seller must accept the request.",
-        ),
-        "p-hint",
-      ),
+      node("p", x(...pair("inline", "t3cd4ea01a3c2")), "p-hint"),
       submit,
     );
     order.onsubmit = (e) => {
@@ -679,7 +849,7 @@ async function openLot(l) {
           await m.createDeal(l, Number(input.value));
           $("#lot-dialog").close();
           openDeals();
-          toast(x("Запрос отправлен", "Request sent"));
+          toast(x(...pair("inline", "tffd8a6b7f19b")));
         });
     };
     info.append(chat, order);
@@ -727,18 +897,85 @@ function renderSelection() {
   updateTotal();
 }
 function updateTotal() {
- const q=Number($("#quantity").value),p=Number($("#unit-price").value),n=q*p,validQ=Number.isSafeInteger(q)&&q>=1&&q<=1000000,validP=Number.isSafeInteger(p)&&p>=1&&p<=1000000000;
- $("#lot-total").replaceChildren(...(validQ&&validP&&Number.isSafeInteger(n)?[money(n)]:[node("span",x("Укажи количество и цену","Set quantity and price"))]));
- $("#publish").disabled=!selected||!validQ||!validP||photoBusy||!!$("#photo-error").textContent;
- for(const [id,valid] of [["quantity",validQ],["unit-price",validP]]){const field=$("#"+id),invalid=!!field.value&&!valid;field.setAttribute("aria-invalid",String(invalid));$("#"+id+"-error").textContent=invalid?x(id==="quantity"?"Целое число от 1 до 1 000 000":"Целое число от 1 до 1 000 000 000","Enter a positive integer within the allowed range"):""}
+  const q = Number($("#quantity").value),
+    p = Number($("#unit-price").value),
+    n = q * p,
+    validQ = Number.isSafeInteger(q) && q >= 1 && q <= 1000000,
+    validP = Number.isSafeInteger(p) && p >= 1 && p <= 1000000000;
+  $("#lot-total").replaceChildren(
+    ...(validQ && validP && Number.isSafeInteger(n)
+      ? [money(n)]
+      : [node("span", x(...pair("inline", "tc61d680697de")))]),
+  );
+  $("#publish").disabled =
+    !selected ||
+    !validQ ||
+    !validP ||
+    photoBusy ||
+    !!$("#photo-error").textContent;
+  for (const [id, valid] of [
+    ["quantity", validQ],
+    ["unit-price", validP],
+  ]) {
+    const field = $("#" + id),
+      invalid = !!field.value && !valid;
+    field.setAttribute("aria-invalid", String(invalid));
+    $("#" + id + "-error").textContent = invalid
+      ? x(
+          id === "quantity"
+            ? "Целое число от 1 до 1 000 000"
+            : "Целое число от 1 до 1 000 000 000",
+          "Enter a positive integer within the allowed range",
+        )
+      : "";
+  }
 }
 async function changePhoto() {
- const version=++photoVersion,file=$("#lot-photo").files[0];preparedPhoto=null;photoBusy=false;
- $("#photo-preview").removeAttribute("src");if(photoURL)URL.revokeObjectURL(photoURL);photoURL=null;$("#photo-error").textContent="";$("#photo-info").textContent="";$("#photo-preview-wrap").hidden=true;
- if(!file){updateTotal();return}
- if(file.size>5*1024*1024){$("#photo-error").textContent=x("Файл больше 5 МиБ. Выбери изображение поменьше.","File exceeds 5 MiB. Choose a smaller image.");updateTotal();return}
- photoBusy=true;updateTotal();$("#photo-info").textContent=x("Подготавливаем фото…","Preparing photo…");
- try {const photo=await m.preparePhoto(file);if(version!==photoVersion)return;preparedPhoto=photo;photoURL=URL.createObjectURL(file);$("#photo-preview").src=photoURL;$("#photo-preview").hidden=false;$("#photo-preview-wrap").hidden=false;const kb=Math.ceil((photo.length-photo.indexOf(',')-1)*.75/1024);$("#photo-info").textContent=x(`Исходник: ${format(Math.ceil(file.size/1024))} КиБ. После сжатия: ${format(kb)} КиБ.`,`Original: ${format(Math.ceil(file.size/1024))} KiB. Compressed: ${format(kb)} KiB.`)}catch(e){if(version===photoVersion)$("#photo-error").textContent=error(e)}finally{if(version===photoVersion){photoBusy=false;updateTotal()}}
+  const version = ++photoVersion,
+    file = $("#lot-photo").files[0];
+  preparedPhoto = null;
+  photoBusy = false;
+  $("#photo-preview").removeAttribute("src");
+  if (photoURL) URL.revokeObjectURL(photoURL);
+  photoURL = null;
+  $("#photo-error").textContent = "";
+  $("#photo-info").textContent = "";
+  $("#photo-preview-wrap").hidden = true;
+  if (!file) {
+    updateTotal();
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    $("#photo-error").textContent = x(...pair("inline", "tf793b0622611"));
+    updateTotal();
+    return;
+  }
+  photoBusy = true;
+  updateTotal();
+  $("#photo-info").textContent = x(...pair("inline", "t26d7473919e0"));
+  try {
+    const photo = await m.preparePhoto(file);
+    if (version !== photoVersion) return;
+    preparedPhoto = photo;
+    photoURL = URL.createObjectURL(file);
+    $("#photo-preview").src = photoURL;
+    $("#photo-preview").hidden = false;
+    $("#photo-preview-wrap").hidden = false;
+    const kb = Math.ceil(
+      ((photo.length - photo.indexOf(",") - 1) * 0.75) / 1024,
+    );
+    $("#photo-info").textContent = message("dynamic", "m12c3b67787c0", {
+      v0: format(Math.ceil(file.size / 1024)),
+      v1: format(kb),
+    });
+  } catch (e) {
+    if (version === photoVersion) $("#photo-error").textContent = error(e);
+  } finally {
+    if (version === photoVersion) {
+      photoBusy = false;
+      updateTotal();
+    }
+  }
 }
 
 function renderEnchants() {
@@ -789,8 +1026,24 @@ function formValue() {
     }),
   };
 }
-function openSale() {
+async function openSale() {
+  try {
+    await m.accountReady();
+  } catch {
+    toast(x(...pair("finish", "errorRetry")));
+    return;
+  }
   if (!requireAccount()) return;
+  try {
+    const full = await loadFullCatalog();
+    Object.assign(catalog, full);
+    itemIndex.clear();
+    for (const row of catalog.items) itemIndex.set(row.key, row);
+    if (selected) selected = item(selected.key) || selected;
+  } catch {
+    toast(x(...pair("finish", "catalogRetry")));
+    return;
+  }
   $("#sale-status").textContent = "";
   renderPicker();
   renderSelection();
@@ -803,7 +1056,7 @@ async function renderFavorites(force = false) {
   if (!force && sig === favSignature) return;
   favSignature = sig;
   const version = sig;
-  $("#favorites-status").textContent = x("Загрузка…", "Loading…");
+  $("#favorites-status").textContent = x(...pair("inline", "tbea6af89e92a"));
   try {
     const cards = await Promise.all(
       m.state.favorites.map(async (f) => {
@@ -821,16 +1074,10 @@ async function renderFavorites(force = false) {
           );
           b.onclick = () => openSeller(f.sellerId, p?.minecraftName);
           box.append(b);
-        } else
-          box.append(
-            node(
-              "p",
-              x("Объявление больше недоступно", "Listing no longer available"),
-            ),
-          );
+        } else box.append(node("p", x(...pair("inline", "t19378f5f89f1"))));
         const remove = node(
           "button",
-          x("Убрать из избранного", "Remove favorite"),
+          x(...pair("inline", "t269ae7ab899d")),
           "text-button",
         );
         remove.onclick = () =>
@@ -848,7 +1095,7 @@ async function renderFavorites(force = false) {
     $("#favorites-results").replaceChildren(...cards);
     $("#favorites-status").textContent = cards.length
       ? ""
-      : x("Пока нет избранного.", "No favorites yet.");
+      : x(...pair("inline", "td9f26afe5892"));
   } catch (e) {
     $("#favorites-status").textContent = error(e);
   }
@@ -894,7 +1141,8 @@ async function openChat(id = null) {
   currentMessageCursor = null;
   $("#messages").replaceChildren();
   $("#message-text").value = "";
-  $("#chat-status").textContent = x("Загрузка сообщений…", "Loading messages…");
+  delete $("#chat-status").dataset.sendState;
+  $("#chat-status").textContent = x(...pair("inline", "t09db7b706732"));
   $("#chat-dialog").classList.add("has-thread");
   let th = m.state.threads.find((t) => t.docId === id);
   if (!th) {
@@ -914,12 +1162,16 @@ async function openChat(id = null) {
     $("#chat-peer").replaceChildren();
     const back = node("button", "←", "icon-button p-back");
     back.type = "button";
-    back.setAttribute("aria-label", x("Диалоги", "Conversations"));
+    back.setAttribute("aria-label", x(...pair("inline", "t19670cedd494")));
     back.onclick = () => {
       $("#chat-dialog").classList.remove("has-thread");
     };
     const identity = node("button", undefined, "p-person");
-    const peerCopy=node("span",undefined,"mc-peer-copy"),confirmedName=node("strong",nick);confirmedName.dataset.mcName=peer;peerCopy.append(confirmedName,playerStatus(peer));identity.append(head(nick),peerCopy);
+    const peerCopy = node("span", undefined, "mc-peer-copy"),
+      confirmedName = node("strong", nick);
+    confirmedName.dataset.mcName = peer;
+    peerCopy.append(confirmedName, playerStatus(peer));
+    identity.append(head(nick), peerCopy);
     identity.onclick = () => openSeller(peer, nick);
     $("#chat-peer").append(back, identity);
   }
@@ -938,7 +1190,8 @@ async function openChat(id = null) {
         $("#older-messages").hidden = rows.length < 50;
       }
       renderMessages();
-      $("#chat-status").textContent = "";
+      if (!$("#chat-status").dataset.sendState)
+        $("#chat-status").textContent = "";
       if ($("#chat-dialog").open) m.markRead("thread", id).catch(() => {});
     },
     (code) => {
@@ -960,10 +1213,10 @@ function renderMessages() {
 }
 const statusLabel = (s) =>
   ({
-    pending: x("Ожидает продавца", "Awaiting seller"),
-    accepted: x("Обмен согласован", "Trade agreed"),
-    completed: x("Завершена", "Completed"),
-    cancelled: x("Отменена", "Cancelled"),
+    pending: x(...pair("inline", "t9a4450267469")),
+    accepted: x(...pair("inline", "tf29b73cd0c79")),
+    completed: x(...pair("inline", "t6fc198874fbb")),
+    cancelled: x(...pair("inline", "t512303374486")),
   })[s] || s;
 function openDeals() {
   if (!requireAccount()) return;
@@ -977,47 +1230,52 @@ function renderDeals() {
 }
 function renderNotifications() {
   const rows = [
-    ...m.state.threads
-      .filter((d) => m.unread("thread", d))
-      .map((d) => ({ kind: "thread", d })),
-    ...m.state.deals
-      .filter((d) => m.unread("deal", d))
-      .map((d) => ({ kind: "deal", d })),
+    ...m.state.threads.map((d) => ({ kind: "thread", d })),
+    ...m.state.deals.map((d) => ({ kind: "deal", d })),
   ];
-  $("#notification-count").textContent = String(rows.length+trading.unreadCount());
-  $("#notification-count").hidden = !(rows.length+trading.unreadCount());
-  $("#notification-list").replaceChildren(
-    ...rows.map(({ kind, d }) => {
-      const b = node("button");
-      b.type = "button";
-      b.append(
-        icon(kind === "thread" ? "message" : "trade"),
-        node(
-          "span",
-          kind === "thread"
-            ? x("Новое сообщение: ", "New message: ") +
-                (d.title || name(item(d.itemKey)))
-            : x("Сделка: ", "Deal: ") + statusLabel(d.status),
-        ),
-      );
-      b.onclick = () => {
-        m.markRead(kind, d.docId).catch(() => {});
-        if (kind === "thread") openChat(d.docId);
-        else openDeals();
-      };
-      return b;
-    }),
+  const unreadCount =
+    rows.filter(({ kind, d }) => m.unread(kind, d)).length +
+    trading.unreadCount();
+  $("#notification-count").textContent = String(unreadCount);
+  $("#notification-count").hidden = !unreadCount;
+  notificationCenter.setSource(
+    "activity",
+    rows.map(({ kind, d }) => ({
+      id: kind + "_" + d.docId,
+      kind,
+      read: !m.unread(kind, d),
+      at: d.updatedAt?.toMillis?.() || d.createdAt?.toMillis?.() || 0,
+      render() {
+        const b = node("button");
+        b.type = "button";
+        b.append(
+          icon(kind === "thread" ? "message" : "trade"),
+          node(
+            "span",
+            kind === "thread"
+              ? x(...pair("inline", "t4215d399f9fd")) +
+                  (d.title || name(item(d.itemKey)))
+              : x(...pair("inline", "t8088e7d1edf3")) + statusLabel(d.status),
+          ),
+        );
+        b.onclick = () => {
+          m.markRead(kind, d.docId).catch(() => {});
+          if (kind === "thread") openChat(d.docId);
+          else openDeals();
+        };
+        return b;
+      },
+    })),
   );
-  if (!rows.length && !trading.unreadCount())
-    $("#notification-list").append(
-      node(
-        "p",
-        x("Новых уведомлений нет.", "No new notifications."),
-        "p-empty",
-      ),
-    );
 }
+
 function renderState() {
+  const limit = $("#sale-limit");
+  if (limit)
+    limit.textContent =
+      x(...pair("inline", "t14ff642efaf3")) +
+      m.state.ownLots.length +
+      x(...pair("inline", "taadeee53753c"));
   renderSellerFavorite();
   renderAccount();
   renderCatalog();
@@ -1040,15 +1298,11 @@ function renderState() {
 }
 async function init() {
   [catalog, dict, enchantments] = await Promise.all([
-    fetch("./data/items.json").then((r) => r.json()),
-    Promise.all(
-      ["ru", "en"].map(async (l) => [
-        l,
-        await fetch("./locales/" + l + ".json").then((r) => r.json()),
-      ]),
-    ).then(Object.fromEntries),
+    loadItemIndex(),
+    loadLocales(),
     fetch("./data/enchantments.json").then((r) => r.json()),
   ]);
+  for (const row of catalog.items) itemIndex.set(row.key, row);
   document.documentElement.style.setProperty(
     "--atlas-rows",
     Math.ceil(catalog.meta.count / catalog.meta.columns),
@@ -1110,7 +1364,10 @@ async function init() {
     task($("#save-profile"), $("#profile-status"), async () => {
       await m.saveProfile();
       peerNames.clear();
-      $("#profile-status").textContent = accessText(m.state.minecraftAccess?.reason,lang==='en');
+      $("#profile-status").textContent = accessText(
+        m.state.minecraftAccess?.reason,
+        lang === "en",
+      );
       renderAccount();
     });
   };
@@ -1136,7 +1393,7 @@ async function init() {
     e.preventDefault();
     task($("#publish"), $("#sale-status"), async () => {
       const value = formValue();
-      $("#sale-status").textContent = x("Публикуем…", "Publishing…");
+      $("#sale-status").textContent = x(...pair("inline", "ta86ea73dbf90"));
       const photo = preparedPhoto;
       await m.publishLot(value, photo);
       $("#sale-dialog").close();
@@ -1148,26 +1405,25 @@ async function init() {
       }
       selected = null;
       preparedPhoto = null;
-      $("#photo-error").textContent="";$("#photo-info").textContent="";$("#photo-preview-wrap").hidden=true;
+      $("#photo-error").textContent = "";
+      $("#photo-info").textContent = "";
+      $("#photo-preview-wrap").hidden = true;
       ench.clear();
       $("#photo-preview").hidden = true;
-      toast(x("Объявление опубликовано", "Listing published"));
+      toast(x(...pair("inline", "t7f2609995371")));
       $("#catalog").scrollIntoView();
     });
   };
   $("#save-draft").onclick = () =>
     task($("#save-draft"), $("#sale-status"), async () => {
       await m.saveDraft(formValue());
-      $("#sale-status").textContent = x("Черновик сохранён", "Draft saved");
+      $("#sale-status").textContent = x(...pair("inline", "tfa1154ebf240"));
     });
   $("#load-draft").onclick = () =>
     task($("#load-draft"), $("#sale-status"), async () => {
       const d = await m.getDraft();
       if (!d) {
-        $("#sale-status").textContent = x(
-          "Черновика пока нет",
-          "No draft saved",
-        );
+        $("#sale-status").textContent = x(...pair("inline", "t6144f054b722"));
         return;
       }
       selected = item(d.itemKey);
@@ -1187,7 +1443,7 @@ async function init() {
       renderPicker();
       renderSelection();
       renderEnchants();
-      $("#sale-status").textContent = x("Черновик открыт", "Draft loaded");
+      $("#sale-status").textContent = x(...pair("inline", "t669c591355ce"));
     });
   $("#chat-dialog").addEventListener("close", () => {
     chatVersion++;
@@ -1200,8 +1456,8 @@ async function init() {
     if (!currentThread) return;
     const body = $("#message-text").value;
     task($("#send-message"), $("#chat-status"), async () => {
-      await experience.send(currentThread, body);
-      $("#message-text").value = "";
+      const sent = await experience.send(currentThread, body);
+      if (sent !== false) $("#message-text").value = "";
     });
   };
   $("#message-text").onkeydown = (e) => {
@@ -1213,11 +1469,12 @@ async function init() {
   $("#older-messages").onclick = () =>
     task($("#older-messages"), $("#chat-status"), async () => {
       const keep = $("#messages").scrollHeight,
+        oldTop = $("#messages").scrollTop,
         result = await m.olderMessages(currentThread, currentMessageCursor);
       older = [...result.rows, ...older];
       currentMessageCursor = result.cursor;
       renderMessages();
-      $("#messages").scrollTop = $("#messages").scrollHeight - keep;
+      $("#messages").scrollTop = oldTop + $("#messages").scrollHeight - keep;
       $("#older-messages").hidden = result.rows.length < 50;
     });
   document.addEventListener("keydown", (e) => {
@@ -1265,10 +1522,93 @@ async function init() {
       return currentThread;
     },
   });
-  quality=initQuality({$,node,icon,x,t,show,toast,catalog,enchantments,m,renderCatalog,renderCategories,openLot,changePhoto,updateTotal,get category(){return category},set category(v){category=v}});
-  initTrading({$,node,icon,x,show,task,toast,item,name,card,money,openLot,openDeals,openChat,requireAccount,error,openReport,catalog,async template(l){selected=item(l.itemKey);$("#quantity").value=Math.max(1,l.availableQty??l.quantity);$("#unit-price").value=l.unitPrice;$("#custom-name").value=l.customName||"";try{ench=new Map((JSON.parse(l.traitData||"{}").enchantmentSelections||[]).map(e=>[e.id,e.level]))}catch{ench.clear()}$("#lot-photo").value="";await changePhoto();if(l.hasPhoto){preparedPhoto=await m.loadPhoto(l);if(preparedPhoto){$("#photo-preview").src=preparedPhoto;$("#photo-preview-wrap").hidden=false;$("#photo-preview").hidden=false;$("#photo-info").textContent=x("Фото скопировано из шаблона","Photo copied from template")}}renderPicker();renderSelection();renderEnchants();updateTotal();openSale();}});
+  quality = initQuality({
+    $,
+    node,
+    icon,
+    x,
+    t,
+    show,
+    toast,
+    catalog,
+    enchantments,
+    m,
+    renderCatalog,
+    renderCategories,
+    openLot,
+    changePhoto,
+    updateTotal,
+    get category() {
+      return category;
+    },
+    set category(v) {
+      category = v;
+    },
+  });
+  initTrading({
+    $,
+    node,
+    icon,
+    x,
+    show,
+    task,
+    toast,
+    item,
+    name,
+    card,
+    money,
+    openLot,
+    openDeals,
+    openChat,
+    requireAccount,
+    error,
+    openReport,
+    catalog,
+    async template(l) {
+      selected = item(l.itemKey);
+      $("#quantity").value = Math.max(1, l.availableQty ?? l.quantity);
+      $("#unit-price").value = l.unitPrice;
+      $("#custom-name").value = l.customName || "";
+      try {
+        ench = new Map(
+          (JSON.parse(l.traitData || "{}").enchantmentSelections || []).map(
+            (e) => [e.id, e.level],
+          ),
+        );
+      } catch {
+        ench.clear();
+      }
+      $("#lot-photo").value = "";
+      await changePhoto();
+      if (l.hasPhoto) {
+        preparedPhoto = await m.loadPhoto(l);
+        if (preparedPhoto) {
+          $("#photo-preview").src = preparedPhoto;
+          $("#photo-preview-wrap").hidden = false;
+          $("#photo-preview").hidden = false;
+          $("#photo-info").textContent = x(...pair("inline", "t8cf39a0a27e4"));
+        }
+      }
+      renderPicker();
+      renderSelection();
+      renderEnchants();
+      updateTotal();
+      openSale();
+    },
+  });
   initAdmin();
+  initReleaseTools();
+  quality.registerDialogs();
+  initFinishUI();
   initDiscordAuth();
+  activeTask(() => {
+    const uid = m.state.user?.uid,
+      b = $("#save-profile");
+    if (uid && b?.disabled && nextManualCheck(uid) === 0) {
+      b.disabled = false;
+      b.title = "";
+    }
+  }, 1000);
   setUI();
   m.initMarket();
   document.documentElement.classList.remove("app-loading");
@@ -1279,5 +1619,5 @@ init().catch(() => {
   $("#boot-text").textContent =
     "Не удалось загрузить сайт. Проверь соединение и обнови страницу / Could not load. Check your connection and reload.";
   $("#boot-screen").classList.add("has-error");
-  $("#boot-retry").onclick=()=>location.reload();
+  $("#boot-retry").onclick = () => location.reload();
 });
