@@ -134,6 +134,14 @@ service cloud.firestore {
     allow create,update:if signed() && request.auth.uid==uid && id.size()<=220 && request.resource.data.keys().hasOnly(['seenAt']) && request.resource.data.seenAt==request.time;
    }
   }
+  // Only the profile owner may publish a server-timestamped heartbeat.
+  // Presence is a UI hint, never a trade authorization proof.
+  match /sitePresence/{id} {
+   allow get:if pid(id);
+   allow list,delete:if false;
+   allow create:if active() && pid(id) && owner(id) && exists(/databases/$(database)/documents/publicProfiles/$(id)) && request.resource.data.keys().hasAll(['seenAt']) && request.resource.data.keys().hasOnly(['seenAt']) && request.resource.data.seenAt==request.time;
+   allow update:if active() && pid(id) && owner(id) && exists(/databases/$(database)/documents/publicProfiles/$(id)) && request.resource.data.keys().hasAll(['seenAt']) && request.resource.data.keys().hasOnly(['seenAt']) && request.resource.data.seenAt==request.time && request.time>=resource.data.seenAt+duration.value(55,'s');
+  }
   match /publicProfiles/{id} {
    allow get:if true;
    allow list:if staff() && bounded(50);
